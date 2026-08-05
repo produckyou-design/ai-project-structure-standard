@@ -183,7 +183,7 @@ def test_tampered_middle_entry_with_recomputed_hash_is_rejected(git_repo: Path) 
         "\n".join(json.dumps(e, ensure_ascii=False, separators=(",", ":")) for e in entries) + "\n",
         encoding="utf-8")
 
-    with pytest.raises(common.GitError, match="무결성 위반"):
+    with pytest.raises(common.GitError, match="integrity violation"):
         sign.run_start(git_repo, task="변조 후 append 시도")
 
     # 거부됐으므로 항목 수가 늘지 않아야 한다

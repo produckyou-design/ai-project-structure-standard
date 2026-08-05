@@ -17,6 +17,8 @@
 
 설정 파일(.ai-standard.json/.yml/.yaml)이 없으면 안전한 기본값으로 동작한다.
 특정 언어·프레임워크에 하드코딩하지 않는다.
+
+CLI 출력(사용자에게 실제로 찍히는 메시지)은 영어다. docstring/주석은 한국어로 유지한다.
 """
 from __future__ import annotations
 
@@ -71,19 +73,19 @@ def _manual_type_check(config: dict) -> str | None:
     """jsonschema 가 없을 때 사용하는 경량 타입 검증. 문제 없으면 None."""
     for field in ("project_name", "test_command"):
         if field in config and not isinstance(config[field], str):
-            return f"{field} 는 문자열이어야 합니다"
+            return f"{field} must be a string"
     for field in (
         "protected_branches", "verify_commands", "forbidden_patterns",
         "allow_exceptions", "allowed_domains", "required_documents",
         "protected_files", "secret_files",
     ):
         if field in config and not isinstance(config[field], list):
-            return f"{field} 는 배열이어야 합니다"
+            return f"{field} must be an array"
     for field in ("release_enabled", "require_human_approval", "require_rollback"):
         if field in config and not isinstance(config[field], bool):
-            return f"{field} 는 boolean 이어야 합니다"
+            return f"{field} must be a boolean"
     if "risk_level" in config and config["risk_level"] not in ("low", "medium", "high"):
-        return "risk_level 은 low|medium|high 중 하나여야 합니다"
+        return "risk_level must be one of low|medium|high"
     return None
 
 
@@ -131,7 +133,7 @@ def load_config(workspace: Path, config_path: str | None = None) -> tuple[dict, 
     if path is None:
         return dict(DEFAULT_CONFIG), None, []
     if not path.is_file():
-        raise ConfigError(f"설정 파일이 없습니다: {path}")
+        raise ConfigError(f"config file not found: {path}")
     try:
         # Windows 편집기가 저장하는 UTF-8 BOM 도 읽을 수 있도록 utf-8-sig 사용
         if path.suffix.lower() == ".json":
@@ -140,9 +142,9 @@ def load_config(workspace: Path, config_path: str | None = None) -> tuple[dict, 
             import yaml
             loaded = yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
     except Exception as exc:
-        return dict(DEFAULT_CONFIG), f"설정 파싱 실패: {exc}", []
+        return dict(DEFAULT_CONFIG), f"config parse failed: {exc}", []
     if not isinstance(loaded, dict):
-        return dict(DEFAULT_CONFIG), "설정 최상위는 객체여야 합니다", []
+        return dict(DEFAULT_CONFIG), "config top level must be an object", []
     merged = {**DEFAULT_CONFIG, **loaded}
     unknown = sorted(set(loaded) - set(DEFAULT_CONFIG))
     return merged, _validate_config(merged), unknown
@@ -161,57 +163,57 @@ def run_preflight(workspace: Path, config_path: str | None = None) -> dict:
         head = git_head(ws)
         porcelain = git_status_porcelain(ws)
         findings.append({"check": "git_repo", "status": "PASS",
-                         "detail": f"Git 저장소. 브랜치 {branch}, HEAD {head}"})
+                         "detail": f"Git repository. branch {branch}, HEAD {head}"})
         if branch in config.get("protected_branches", []):
             findings.append({"check": "protected_branch", "status": "FAIL",
-                             "detail": f"protected branch({branch})에서 직접 작업 금지. feature branch 를 사용하라."})
+                             "detail": f"direct work on protected branch ({branch}) is not allowed. Use a feature branch."})
         else:
             findings.append({"check": "protected_branch", "status": "PASS",
-                             "detail": f"{branch} 는 보호 대상이 아님"})
+                             "detail": f"{branch} is not a protected branch"})
 
         lines = porcelain.splitlines()
         dirty = [ln[3:] for ln in lines if len(ln) > 3 and not ln.startswith("??")]
         untracked = [ln[3:] for ln in lines if ln.startswith("??")]
         if dirty:
             findings.append({"check": "worktree", "status": "WARN",
-                             "detail": f"미커밋 변경 {len(dirty)} 개: {', '.join(dirty[:5])}"})
+                             "detail": f"{len(dirty)} uncommitted change(s): {', '.join(dirty[:5])}"})
         else:
-            findings.append({"check": "worktree", "status": "PASS", "detail": "작업트리 변경 없음"})
+            findings.append({"check": "worktree", "status": "PASS", "detail": "working tree clean"})
         if untracked:
             findings.append({"check": "untracked", "status": "INFO",
-                             "detail": f"추적되지 않은 파일 {len(untracked)} 개: {', '.join(untracked[:5])}"})
+                             "detail": f"{len(untracked)} untracked file(s): {', '.join(untracked[:5])}"})
         else:
-            findings.append({"check": "untracked", "status": "PASS", "detail": "추적되지 않은 파일 없음"})
+            findings.append({"check": "untracked", "status": "PASS", "detail": "no untracked files"})
     else:
-        findings.append({"check": "git_repo", "status": "FAIL", "detail": f"Git 저장소가 아님: {ws}"})
+        findings.append({"check": "git_repo", "status": "FAIL", "detail": f"not a Git repository: {ws}"})
         for check in ("protected_branch", "worktree", "untracked", "protected_file", "secret_files_tracked"):
-            findings.append({"check": check, "status": "NOT_RUN", "detail": "Git 저장소 아님"})
+            findings.append({"check": check, "status": "NOT_RUN", "detail": "not a Git repository"})
 
     # 필수 문서
     for doc in config.get("required_documents", []):
         if (ws / doc).is_file():
             findings.append({"check": f"required_document:{doc}", "status": "PASS",
-                             "detail": f"필수 문서 존재: {doc}"})
+                             "detail": f"required document present: {doc}"})
         else:
             findings.append({"check": f"required_document:{doc}", "status": "FAIL",
-                             "detail": f"필수 문서 누락: {doc}"})
+                             "detail": f"required document missing: {doc}"})
     if not config.get("required_documents"):
-        findings.append({"check": "required_document", "status": "INFO", "detail": "필수 문서 미설정"})
+        findings.append({"check": "required_document", "status": "INFO", "detail": "no required documents configured"})
 
     if git_ok:
         changed = [ln[3:] for ln in porcelain.splitlines() if len(ln) > 3]
         for pf in config.get("protected_files", []):
             if not (ws / pf).is_file():
                 findings.append({"check": f"protected_file:{pf}", "status": "FAIL",
-                                 "detail": f"보호 파일이 존재하지 않음: {pf}"})
+                                 "detail": f"protected file does not exist: {pf}"})
             elif pf in changed:
                 findings.append({"check": f"protected_file:{pf}", "status": "FAIL",
-                                 "detail": f"보호 파일이 변경됨: {pf}"})
+                                 "detail": f"protected file was changed: {pf}"})
             else:
                 findings.append({"check": f"protected_file:{pf}", "status": "PASS",
-                                 "detail": f"보호 파일 변경 없음: {pf}"})
+                                 "detail": f"protected file unchanged: {pf}"})
         if not config.get("protected_files"):
-            findings.append({"check": "protected_file", "status": "INFO", "detail": "보호 파일 미설정"})
+            findings.append({"check": "protected_file", "status": "INFO", "detail": "no protected files configured"})
 
         tracked = run_git(ws, ["ls-files"]).splitlines()
         patterns = config.get("secret_files", [])
@@ -221,10 +223,10 @@ def run_preflight(workspace: Path, config_path: str | None = None) -> dict:
         })
         if matched:
             findings.append({"check": "secret_files_tracked", "status": "FAIL",
-                             "detail": f"시크릿 파일이 Git 에 추적됨: {', '.join(matched)}"})
+                             "detail": f"secret-pattern file(s) tracked by Git: {', '.join(matched)}"})
         else:
             findings.append({"check": "secret_files_tracked", "status": "PASS",
-                             "detail": "시크릿 패턴 파일이 추적되지 않음"})
+                             "detail": "no secret-pattern files are tracked"})
 
     # 실행 환경
     findings.append({"check": "environment", "status": "INFO",
@@ -237,19 +239,19 @@ def run_preflight(workspace: Path, config_path: str | None = None) -> dict:
     test_cmd = config.get("test_command", "")
     if test_cmd:
         if _tool_exists(test_cmd):
-            findings.append({"check": "test_tool", "status": "PASS", "detail": f"테스트 도구 존재: {test_cmd}"})
+            findings.append({"check": "test_tool", "status": "PASS", "detail": f"test tool found: {test_cmd}"})
         else:
-            findings.append({"check": "test_tool", "status": "WARN", "detail": f"테스트 도구를 찾을 수 없음: {test_cmd}"})
+            findings.append({"check": "test_tool", "status": "WARN", "detail": f"test tool not found: {test_cmd}"})
     else:
-        findings.append({"check": "test_tool", "status": "INFO", "detail": "테스트 명령 미설정"})
+        findings.append({"check": "test_tool", "status": "INFO", "detail": "no test_command configured"})
 
     for cmd in config.get("verify_commands", []):
         if _tool_exists(cmd):
-            findings.append({"check": f"verify_tool:{cmd}", "status": "PASS", "detail": f"검증 도구 존재: {cmd}"})
+            findings.append({"check": f"verify_tool:{cmd}", "status": "PASS", "detail": f"verify tool found: {cmd}"})
         else:
-            findings.append({"check": f"verify_tool:{cmd}", "status": "WARN", "detail": f"검증 도구를 찾을 수 없음: {cmd}"})
+            findings.append({"check": f"verify_tool:{cmd}", "status": "WARN", "detail": f"verify tool not found: {cmd}"})
     if not config.get("verify_commands"):
-        findings.append({"check": "verify_tool", "status": "INFO", "detail": "검증 명령 미설정"})
+        findings.append({"check": "verify_tool", "status": "INFO", "detail": "no verify_commands configured"})
 
     # 설정 유효성
     source = str(config_path) if config_path else str(find_config(ws) or "defaults")
@@ -257,12 +259,12 @@ def run_preflight(workspace: Path, config_path: str | None = None) -> dict:
         findings.append({"check": "config_valid", "status": "FAIL", "detail": config_error})
     elif unknown_keys:
         findings.append({"check": "config_valid", "status": "WARN",
-                         "detail": f"알 수 없는 설정 키 (오타 가능성): {', '.join(unknown_keys)} (source: {source})"})
+                         "detail": f"unknown config key(s) (possible typo): {', '.join(unknown_keys)} (source: {source})"})
     else:
-        findings.append({"check": "config_valid", "status": "PASS", "detail": f"설정 유효 (source: {source})"})
+        findings.append({"check": "config_valid", "status": "PASS", "detail": f"config valid (source: {source})"})
 
     # 위험 등급
-    findings.append({"check": "risk_level", "status": "INFO", "detail": f"위험 등급: {config.get('risk_level')}"})
+    findings.append({"check": "risk_level", "status": "INFO", "detail": f"risk level: {config.get('risk_level')}"})
 
     has_fail = any(f["status"] == "FAIL" for f in findings)
     has_warn = any(f["status"] == "WARN" for f in findings)
@@ -284,10 +286,10 @@ def run_preflight(workspace: Path, config_path: str | None = None) -> dict:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="preflight", description="프로젝트 수정 전 위험 경계 확인")
-    parser.add_argument("--config", default=None, help="설정 파일 경로 (기본: .ai-standard.json/.yml/.yaml 자동 탐색)")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
-    parser.add_argument("--json", action="store_true", help="JSON 형식으로 출력")
+    parser = argparse.ArgumentParser(prog="preflight", description="Check risk boundaries before modifying a project")
+    parser.add_argument("--config", default=None, help="config file path (default: auto-detect .ai-standard.json/.yml/.yaml)")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
+    parser.add_argument("--json", action="store_true", help="output as JSON")
     return parser
 
 

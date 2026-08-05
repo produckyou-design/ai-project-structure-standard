@@ -62,11 +62,11 @@ def _check(name: str, status: str, detail: str) -> dict:
 
 def _load_json(path: Path) -> tuple[dict | None, str | None]:
     if not path.is_file():
-        return None, f"파일이 존재하지 않음: {path}"
+        return None, f"file does not exist: {path}"
     try:
         return json.loads(path.read_text(encoding="utf-8")), None
     except (OSError, json.JSONDecodeError) as exc:
-        return None, f"읽기/파싱 실패: {exc}"
+        return None, f"read/parse failed: {exc}"
 
 
 def _manifest_body_hash(manifest: dict) -> str:
@@ -88,7 +88,7 @@ def run_verify_release(
     checks: list[dict] = []
 
     if config_error:
-        checks.append(_check("config", "FAIL", f"설정 오류: {config_error}"))
+        checks.append(_check("config", "FAIL", f"config error: {config_error}"))
 
     manifest_file = Path(manifest_path) if manifest_path else ws / ".ai" / "release_manifest.json"
     verification_file = Path(verification_path) if verification_path else ws / ".ai" / "verification.json"
@@ -98,16 +98,16 @@ def run_verify_release(
 
     # 1) worktree_clean
     if not is_git_repo(ws):
-        checks.append(_check("worktree_clean", "FAIL", f"Git 저장소가 아님: {ws}"))
+        checks.append(_check("worktree_clean", "FAIL", f"not a Git repository: {ws}"))
     else:
         porcelain = git_status_porcelain(ws)
         if porcelain.strip() == "":
-            checks.append(_check("worktree_clean", "PASS", "작업트리 변경 없음"))
+            checks.append(_check("worktree_clean", "PASS", "working tree clean"))
         else:
             dirty_lines = porcelain.splitlines()
             checks.append(_check(
                 "worktree_clean", "FAIL",
-                f"작업트리가 깨끗하지 않음 ({len(dirty_lines)}개 변경): {', '.join(dirty_lines[:5])}",
+                f"working tree not clean ({len(dirty_lines)} change(s)): {', '.join(dirty_lines[:5])}",
             ))
 
     # 2) manifest_exists
@@ -116,20 +116,20 @@ def run_verify_release(
     # PASS(exit 0) 로 나와 게이트가 통째로 우회된다. 그래서 부재 자체를 FAIL 로
     # 판정한다 (verification_exists 와 대칭).
     if manifest is None:
-        checks.append(_check("manifest_exists", "FAIL", f"release manifest 로드 실패: {manifest_error}"))
+        checks.append(_check("manifest_exists", "FAIL", f"failed to load release manifest: {manifest_error}"))
     else:
         missing_fields = [f for f in MANIFEST_REQUIRED_FIELDS if f not in manifest]
         if missing_fields:
             checks.append(_check("manifest_exists", "FAIL",
-                                 f"manifest 필수 필드 누락: {', '.join(missing_fields)}"))
+                                 f"manifest missing required field(s): {', '.join(missing_fields)}"))
         else:
-            checks.append(_check("manifest_exists", "PASS", f"release manifest 존재: {manifest_file}"))
+            checks.append(_check("manifest_exists", "PASS", f"release manifest present: {manifest_file}"))
 
     # 3) source_commit_match
     if manifest is None:
-        checks.append(_check("source_commit_match", "NOT_RUN", f"manifest 로드 실패: {manifest_error}"))
+        checks.append(_check("source_commit_match", "NOT_RUN", f"failed to load manifest: {manifest_error}"))
     elif not is_git_repo(ws):
-        checks.append(_check("source_commit_match", "FAIL", "Git 저장소가 아니라 HEAD 를 확인할 수 없음"))
+        checks.append(_check("source_commit_match", "FAIL", "not a Git repository, cannot check HEAD"))
     else:
         head = git_head(ws)
         source_commit = str(manifest.get("source_commit", ""))
@@ -138,22 +138,22 @@ def run_verify_release(
         else:
             checks.append(_check(
                 "source_commit_match", "FAIL",
-                f"manifest.source_commit({source_commit[:12] or '(없음)'}) != HEAD({head[:12]})",
+                f"manifest.source_commit({source_commit[:12] or '(none)'}) != HEAD({head[:12]})",
             ))
 
     # 4) verification_exists
     if verification is None:
-        checks.append(_check("verification_exists", "FAIL", f"verification.json 로드 실패: {verification_error}"))
+        checks.append(_check("verification_exists", "FAIL", f"failed to load verification.json: {verification_error}"))
     else:
         missing = [f for f in VERIFICATION_REQUIRED_FIELDS if f not in verification]
         if missing:
-            checks.append(_check("verification_exists", "FAIL", f"필수 필드 누락: {', '.join(missing)}"))
+            checks.append(_check("verification_exists", "FAIL", f"missing required field(s): {', '.join(missing)}"))
         else:
-            checks.append(_check("verification_exists", "PASS", f"verification.json 존재: {verification_file}"))
+            checks.append(_check("verification_exists", "PASS", f"verification.json present: {verification_file}"))
 
     # 5) verification_passed  (FAIL/NOT_RUN 모두 실패로 취급 — NOT_RUN 을 PASS 로 인정하지 않는다)
     if verification is None:
-        checks.append(_check("verification_passed", "NOT_RUN", "verification.json 로드 실패로 판정 불가"))
+        checks.append(_check("verification_passed", "NOT_RUN", "cannot judge: verification.json failed to load"))
     else:
         v_status = verification.get("status")
         if v_status == "PASS":
@@ -161,46 +161,46 @@ def run_verify_release(
         else:
             checks.append(_check(
                 "verification_passed", "FAIL",
-                f"verification.status == {v_status!r} (PASS 아님; NOT_RUN 은 통과로 인정하지 않음)",
+                f"verification.status == {v_status!r} (not PASS; NOT_RUN is not accepted as passing)",
             ))
 
     # 6) verification_hash (변조 감지)
     if verification is None:
-        checks.append(_check("verification_hash", "NOT_RUN", "verification.json 로드 실패로 판정 불가"))
+        checks.append(_check("verification_hash", "NOT_RUN", "cannot judge: verification.json failed to load"))
     else:
         try:
             ok = verify_result_hash(verification)
         except (TypeError, ValueError) as exc:
             ok = False
-            checks.append(_check("verification_hash", "FAIL", f"result_hash 계산 실패: {exc}"))
+            checks.append(_check("verification_hash", "FAIL", f"result_hash computation failed: {exc}"))
         else:
             checks.append(_check(
                 "verification_hash", "PASS" if ok else "FAIL",
-                "result_hash 재계산 일치" if ok else "result_hash 재계산 불일치 (변조 의심)",
+                "result_hash recomputation matches" if ok else "result_hash recomputation mismatch (possible tampering)",
             ))
 
     # 7) verification_run_match
     if manifest is None or verification is None:
         checks.append(_check("verification_run_match", "NOT_RUN",
-                             "manifest 또는 verification.json 로드 실패로 판정 불가"))
+                             "cannot judge: manifest or verification.json failed to load"))
     else:
         m_run = str(manifest.get("verification_run_id", ""))
         v_run = str(verification.get("verification_run_id", ""))
         if m_run and m_run == v_run:
-            checks.append(_check("verification_run_match", "PASS", f"verification_run_id 일치: {m_run}"))
+            checks.append(_check("verification_run_match", "PASS", f"verification_run_id matches: {m_run}"))
         else:
             checks.append(_check(
                 "verification_run_match", "FAIL",
-                f"manifest.verification_run_id({m_run or '(없음)'}) != verification.verification_run_id({v_run or '(없음)'})",
+                f"manifest.verification_run_id({m_run or '(none)'}) != verification.verification_run_id({v_run or '(none)'})",
             ))
 
     # 8) artifact_hashes (검증 후 변조 차단 — 핵심 게이트)
     if manifest is None:
-        checks.append(_check("artifact_hashes", "NOT_RUN", "manifest 로드 실패로 판정 불가"))
+        checks.append(_check("artifact_hashes", "NOT_RUN", "cannot judge: manifest failed to load"))
     else:
         artifacts = manifest.get("artifacts", [])
         if not isinstance(artifacts, list) or not artifacts:
-            checks.append(_check("artifact_hashes", "FAIL", "manifest 에 artifact 가 없음"))
+            checks.append(_check("artifact_hashes", "FAIL", "manifest has no artifacts"))
         else:
             problems: list[str] = []
             for entry in artifacts:
@@ -209,65 +209,65 @@ def run_verify_release(
                 target = Path(rel)
                 target = target if target.is_absolute() else ws / rel
                 if not target.is_file():
-                    problems.append(f"{rel}: 파일 없음")
+                    problems.append(f"{rel}: file missing")
                     continue
                 actual_hash = _sha256_file_binary(target)
                 if actual_hash != expected_hash:
-                    problems.append(f"{rel}: 해시 불일치 (변조 의심)")
+                    problems.append(f"{rel}: hash mismatch (possible tampering)")
             if problems:
                 checks.append(_check("artifact_hashes", "FAIL",
-                                     f"{len(problems)}개 artifact 문제: {'; '.join(problems[:5])}"))
+                                     f"{len(problems)} artifact issue(s): {'; '.join(problems[:5])}"))
             else:
-                checks.append(_check("artifact_hashes", "PASS", f"{len(artifacts)}개 artifact 해시 일치"))
+                checks.append(_check("artifact_hashes", "PASS", f"{len(artifacts)} artifact hash(es) match"))
 
     # 9) total_hash
     if manifest is None:
-        checks.append(_check("total_hash", "NOT_RUN", "manifest 로드 실패로 판정 불가"))
+        checks.append(_check("total_hash", "NOT_RUN", "cannot judge: manifest failed to load"))
     else:
         artifacts = manifest.get("artifacts", [])
         recomputed = sha256("".join(sorted(str(a.get("sha256", "")) for a in artifacts)))
         recorded = str(manifest.get("total_artifact_hash", ""))
         if recomputed == recorded:
-            checks.append(_check("total_hash", "PASS", "total_artifact_hash 재계산 일치"))
+            checks.append(_check("total_hash", "PASS", "total_artifact_hash recomputation matches"))
         else:
-            checks.append(_check("total_hash", "FAIL", "total_artifact_hash 재계산 불일치 (변조 의심)"))
+            checks.append(_check("total_hash", "FAIL", "total_artifact_hash recomputation mismatch (possible tampering)"))
 
     # 10) manifest_hash (manifest 자체 변조 차단)
     if manifest is None:
-        checks.append(_check("manifest_hash", "NOT_RUN", "manifest 로드 실패로 판정 불가"))
+        checks.append(_check("manifest_hash", "NOT_RUN", "cannot judge: manifest failed to load"))
     else:
         recomputed = _manifest_body_hash(manifest)
         recorded = str(manifest.get("manifest_hash", ""))
         if recomputed == recorded:
-            checks.append(_check("manifest_hash", "PASS", "manifest_hash 재계산 일치"))
+            checks.append(_check("manifest_hash", "PASS", "manifest_hash recomputation matches"))
         else:
-            checks.append(_check("manifest_hash", "FAIL", "manifest_hash 재계산 불일치 (변조 의심)"))
+            checks.append(_check("manifest_hash", "FAIL", "manifest_hash recomputation mismatch (possible tampering)"))
 
     # 11) rollback_point
     require_rollback = bool(config.get("require_rollback", False))
     if manifest is None:
-        checks.append(_check("rollback_point", "NOT_RUN", "manifest 로드 실패로 판정 불가"))
+        checks.append(_check("rollback_point", "NOT_RUN", "cannot judge: manifest failed to load"))
     else:
         rollback_point = str(manifest.get("rollback_point", "") or "").strip()
         if require_rollback and not rollback_point:
-            checks.append(_check("rollback_point", "FAIL", "require_rollback=true 인데 rollback_point 가 비어 있음"))
+            checks.append(_check("rollback_point", "FAIL", "require_rollback=true but rollback_point is empty"))
         elif not rollback_point:
-            checks.append(_check("rollback_point", "PASS", "rollback_point 없음 (require_rollback=false, 경고)"))
+            checks.append(_check("rollback_point", "PASS", "no rollback_point (require_rollback=false, warning)"))
         else:
             checks.append(_check("rollback_point", "PASS", f"rollback_point: {rollback_point}"))
 
     # 12) human_approval
     require_approval = bool(config.get("require_human_approval", False))
     if manifest is None:
-        checks.append(_check("human_approval", "NOT_RUN", "manifest 로드 실패로 판정 불가"))
+        checks.append(_check("human_approval", "NOT_RUN", "cannot judge: manifest failed to load"))
     else:
         approved_by = str(manifest.get("approved_by", "") or "").strip()
         if require_approval and not approved_by:
-            checks.append(_check("human_approval", "FAIL", "require_human_approval=true 인데 approved_by 가 비어 있음"))
+            checks.append(_check("human_approval", "FAIL", "require_human_approval=true but approved_by is empty"))
         else:
             checks.append(_check(
                 "human_approval", "PASS",
-                f"approved_by: {approved_by}" if approved_by else "승인자 미지정 (require_human_approval=false)",
+                f"approved_by: {approved_by}" if approved_by else "no approver set (require_human_approval=false)",
             ))
 
     # 13) release_enabled
@@ -275,7 +275,7 @@ def run_verify_release(
     if release_enabled:
         checks.append(_check("release_enabled", "PASS", "release_enabled=true"))
     else:
-        checks.append(_check("release_enabled", "FAIL", "release_enabled=false: 이 프로젝트는 릴리스가 비활성화됨"))
+        checks.append(_check("release_enabled", "FAIL", "release_enabled=false: releases are disabled for this project"))
 
     has_fail = any(c["status"] == "FAIL" for c in checks)
     executed = [c for c in checks if c["status"] in ("PASS", "FAIL")]
@@ -306,12 +306,12 @@ def _sha256_file_binary(path: Path) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="verify_release", description="릴리스 후보 검증(롤백 게이트)")
-    parser.add_argument("--manifest", default=None, help="release manifest 경로 (기본: .ai/release_manifest.json)")
-    parser.add_argument("--verification", default=None, help="verification.json 경로 (기본: .ai/verification.json)")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
-    parser.add_argument("--config", default=None, help="설정 파일 경로 (기본: .ai-standard.* 자동 탐색)")
-    parser.add_argument("--json", action="store_true", help="JSON 형식으로 출력")
+    parser = argparse.ArgumentParser(prog="verify_release", description="Verify a release candidate (rollback gate)")
+    parser.add_argument("--manifest", default=None, help="release manifest path (default: .ai/release_manifest.json)")
+    parser.add_argument("--verification", default=None, help="verification.json path (default: .ai/verification.json)")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
+    parser.add_argument("--config", default=None, help="config file path (default: auto-detect .ai-standard.*)")
+    parser.add_argument("--json", action="store_true", help="output as JSON")
     return parser
 
 
@@ -327,8 +327,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
-        print(f"verify_release: {report['status']}  (release_id: {report['release_id'] or '(없음)'}, "
-              f"version: {report['version'] or '(없음)'}, "
+        print(f"verify_release: {report['status']}  (release_id: {report['release_id'] or '(none)'}, "
+              f"version: {report['version'] or '(none)'}, "
               f"pass {report['summary']['pass']} / fail {report['summary']['fail']} / "
               f"not_run {report['summary']['not_run']})")
         for c in report["checks"]:

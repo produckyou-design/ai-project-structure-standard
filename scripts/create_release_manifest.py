@@ -67,7 +67,7 @@ def resolve_artifact_files(workspace: Path, given: list[str]) -> list[Path]:
     디렉터리는 재귀적으로 펼치되 .git 디렉터리는 건너뛴다.
     """
     if not given:
-        raise ReleaseManifestError("--artifacts 는 최소 1개 이상 지정해야 합니다")
+        raise ReleaseManifestError("--artifacts requires at least 1 value")
     results: list[Path] = []
     for raw in given:
         candidate = Path(raw)
@@ -80,10 +80,10 @@ def resolve_artifact_files(workspace: Path, given: list[str]) -> list[Path]:
                 if p.is_file() and not any(part == ".git" for part in p.relative_to(candidate).parts)
             ]
             if not found:
-                raise ReleaseManifestError(f"artifact 디렉터리에 파일이 없습니다: {raw}")
+                raise ReleaseManifestError(f"artifact directory contains no files: {raw}")
             results.extend(found)
         else:
-            raise ReleaseManifestError(f"artifact 경로가 존재하지 않습니다: {raw}")
+            raise ReleaseManifestError(f"artifact path does not exist: {raw}")
     return results
 
 
@@ -153,16 +153,16 @@ def verify_manifest_hash(manifest: dict) -> bool:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="create_release_manifest", description="릴리스 manifest 생성")
-    parser.add_argument("--version", required=True, help="릴리스 버전")
-    parser.add_argument("--artifacts", nargs="+", required=True, help="artifact 파일/디렉터리 (반복 가능)")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
-    parser.add_argument("--out", default=None, help="저장 경로 (기본: .ai/release_manifest.json)")
-    parser.add_argument("--verification", default=None, help="verification.json 경로 (verification_run_id 연동)")
-    parser.add_argument("--rollback-point", default="", help="롤백 지점(커밋/태그/배포 식별자)")
-    parser.add_argument("--approved-by", default="", help="승인자 이름")
-    parser.add_argument("--build-run-id", default="", help="빌드 실행 식별자")
-    parser.add_argument("--json", action="store_true", help="JSON 형식으로 출력")
+    parser = argparse.ArgumentParser(prog="create_release_manifest", description="Generate a release manifest")
+    parser.add_argument("--version", required=True, help="release version")
+    parser.add_argument("--artifacts", nargs="+", required=True, help="artifact file/directory (repeatable)")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
+    parser.add_argument("--out", default=None, help="output path (default: .ai/release_manifest.json)")
+    parser.add_argument("--verification", default=None, help="verification.json path (links verification_run_id)")
+    parser.add_argument("--rollback-point", default="", help="rollback point (commit/tag/deploy identifier)")
+    parser.add_argument("--approved-by", default="", help="approver name")
+    parser.add_argument("--build-run-id", default="", help="build run identifier")
+    parser.add_argument("--json", action="store_true", help="output as JSON")
     return parser
 
 

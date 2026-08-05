@@ -61,9 +61,9 @@ def run_git(workspace: Path, args: list[str], check: bool = True) -> str:
             errors="replace",
         )
     except OSError as exc:
-        raise GitError(f"git 실행 실패 (워크스페이스 확인 필요): {exc}") from exc
+        raise GitError(f"git execution failed (check workspace): {exc}") from exc
     if check and result.returncode != 0:
-        raise GitError(f"git {' '.join(args)} 실패: {result.stderr.strip()}")
+        raise GitError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
     # porcelain 의 선행 공백(XY 상태 코드 이전)을 보존해야 하므로 strip() 대신 줄바꿈만 제거
     return result.stdout.rstrip("\r\n")
 
@@ -192,9 +192,9 @@ def verify_ledger_chain(entries: list[dict]) -> tuple[bool, str]:
     previous = ""
     for index, entry in enumerate(entries):
         if _entry_digest(entry) != entry.get("entry_hash", ""):
-            return False, f"{index}번째 항목의 entry_hash 가 내용과 일치하지 않습니다"
+            return False, f"entry {index}: entry_hash does not match its content"
         if entry.get("previous_entry_hash", "") != previous:
-            return False, f"{index}번째 항목의 previous_entry_hash 가 직전 항목과 이어지지 않습니다"
+            return False, f"entry {index}: previous_entry_hash does not link to the prior entry"
         previous = entry.get("entry_hash", "")
     return True, ""
 
@@ -212,7 +212,7 @@ def append_ledger(workspace: Path, entry: dict) -> dict:
         chain_ok, reason = verify_ledger_chain(entries)
         if not chain_ok:
             raise GitError(
-                f"ledger 무결성 위반: {reason}. append 를 거부합니다 (변조 가능성)."
+                f"ledger integrity violation: {reason}. Rejecting append (possible tampering)."
             )
     previous_hash = entries[-1].get("entry_hash", "") if entries else ""
     body = {k: v for k, v in entry.items() if k != "entry_hash"}
@@ -242,7 +242,7 @@ _SECRET_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"(?i)discord(?:app)?\.com/api/webhooks/\d+/[A-Za-z0-9_-]{16,}"),
      "discord.com/api/webhooks/***"),
     (re.compile(r"(?i)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL),
-     "-----BEGIN PRIVATE KEY----- (마스킹됨)"),
+     "-----BEGIN PRIVATE KEY----- (masked)"),
     (re.compile(r"(?i)authorization\s*[:=]\s*\S+"), "authorization: ***"),
     (re.compile(
         r"(?i)((?:password|passwd|pwd|secret(?:[_-]?key)?|client[_-]?secret|app[_-]?secret|"

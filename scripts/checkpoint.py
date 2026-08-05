@@ -45,7 +45,7 @@ _NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 def safe_name(name: str) -> str:
     cleaned = _NAME_RE.sub("_", name.strip()) or "checkpoint"
     if cleaned in (".", ".."):
-        raise ValueError(f"잘못된 체크포인트 이름: {name!r}")
+        raise ValueError(f"invalid checkpoint name: {name!r}")
     return cleaned
 
 
@@ -71,7 +71,7 @@ def _copy_subdir(root: Path, subdir: str, dest: Path, patterns: list[str]) -> li
 def create_checkpoint(workspace: Path, name: str | None = None) -> dict:
     """체크포인트를 생성하고 생성 경로와 manifest 를 반환한다."""
     if not is_git_repo(workspace):
-        raise GitError(f"Git 저장소가 아닙니다: {workspace}")
+        raise GitError(f"not a Git repository: {workspace}")
     root = repo_root(workspace)
     cp_name = safe_name(name) if name else now_iso().replace(":", "-").replace("+", "Z")
     dest = root / CHECKPOINT_SUBDIR / cp_name
@@ -143,9 +143,9 @@ def create_checkpoint(workspace: Path, name: str | None = None) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     configure_utf8_io()
-    parser = argparse.ArgumentParser(prog="checkpoint", description="Git 체크포인트 생성 (자동 commit 없음)")
-    parser.add_argument("--name", default=None, help="체크포인트 이름 (기본: 타임스탬프)")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
+    parser = argparse.ArgumentParser(prog="checkpoint", description="Create a Git checkpoint (no automatic commit)")
+    parser.add_argument("--name", default=None, help="checkpoint name (default: timestamp)")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
     args = parser.parse_args(argv)
     try:
         result = create_checkpoint(resolve_workspace(args.workspace), name=args.name)

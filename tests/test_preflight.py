@@ -69,7 +69,7 @@ def test_protected_branch_fails(git_repo: Path) -> None:
     report = preflight.run_preflight(git_repo)
     assert report["status"] == "FAIL"
     assert _finding(report, "protected_branch")["status"] == "FAIL"
-    assert _finding(report, "protected_branch")["detail"].startswith("protected branch")
+    assert "protected branch" in _finding(report, "protected_branch")["detail"]
 
 
 def test_uncommitted_changes_warn(git_repo: Path) -> None:
@@ -150,7 +150,7 @@ def test_missing_protected_file_fails(git_repo: Path) -> None:
     report = preflight.run_preflight(git_repo)
     finding = _finding(report, "protected_file:SECURITY.md")
     assert finding["status"] == "FAIL"
-    assert "존재하지 않음" in finding["detail"]
+    assert "does not exist" in finding["detail"]
     assert report["status"] == "FAIL"
 
 

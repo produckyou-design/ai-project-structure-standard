@@ -63,9 +63,9 @@ def run_start(
 ) -> dict:
     """시작 서명을 생성하고 ledger에 기록한다."""
     if not task.strip():
-        raise ValueError("task 는 필수입니다.")
+        raise ValueError("task is required.")
     if not is_git_repo(workspace):
-        raise GitError(f"Git 저장소가 아닙니다: {workspace}")
+        raise GitError(f"not a Git repository: {workspace}")
     entry = {
         "kind": "start",
         "run_id": run_id or generate_run_id(),
@@ -109,9 +109,9 @@ def run_end(
     run_id 미지정 시 연결 가능한 마지막 start 항목을 자동으로 찾는다.
     """
     if status not in ("success", "fail", "aborted"):
-        raise ValueError("status 는 success|fail|aborted 중 하나여야 합니다.")
+        raise ValueError("status must be one of success|fail|aborted.")
     if not is_git_repo(workspace):
-        raise GitError(f"Git 저장소가 아닙니다: {workspace}")
+        raise GitError(f"not a Git repository: {workspace}")
 
     entries = read_ledger(workspace)
 
@@ -122,13 +122,13 @@ def run_end(
     if run_id:
         linked = next((e for e in entries if e.get("run_id") == run_id and e.get("kind") == "start"), None)
         if linked is None:
-            raise ValueError(f"run_id '{run_id}' 에 해당하는 start 항목이 ledger에 없습니다.")
+            raise ValueError(f"no start entry found in the ledger for run_id '{run_id}'.")
     else:
         # 이미 end 가 있는 run 을 다시 선택하지 않는다 (중복 end 방지)
         linked = next((e for e in reversed(entries) if e.get("kind") == "start" and not _has_end(e["run_id"])), None)
         if linked is None:
             raise ValueError(
-                "연결할 start 항목이 없습니다. --run-id 를 지정하거나 먼저 start 서명을 생성하세요."
+                "no start entry to link. Specify --run-id or create a start signature first."
             )
 
     entry = {
@@ -159,12 +159,12 @@ def run_end(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="sign_ai_session", description="AI 작업 시작·종료 서명 생성")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
+    parser = argparse.ArgumentParser(prog="sign_ai_session", description="Generate AI work start/end signatures")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sp = sub.add_parser("start", help="시작 서명 생성")
-    sp.add_argument("--task", required=True, help="수행할 작업 설명")
+    sp = sub.add_parser("start", help="generate start signature")
+    sp.add_argument("--task", required=True, help="description of the task to perform")
     sp.add_argument("--run-id", default=None)
     sp.add_argument("--parent-run-id", default="")
     sp.add_argument("--provider", default="unknown")
@@ -176,7 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--expected-tests", default="")
     sp.add_argument("--documents-read", default="")
 
-    ep = sub.add_parser("end", help="종료 서명 생성")
+    ep = sub.add_parser("end", help="generate end signature")
     ep.add_argument("--status", required=True, choices=["success", "fail", "aborted"])
     ep.add_argument("--run-id", default=None)
     ep.add_argument("--tests-run", default="")

@@ -1,6 +1,15 @@
 # CURRENT
 
-- 갱신: Phase 8 독립 감사 완료, director 재검증 완료 (2026-08-05)
+- 갱신: CLI 출력 영어화, 영어 README 추가 (2026-08-05)
+
+## CLI 출력 영어화 (director 직접 작업)
+
+- 사용자 요청: "저장소 전체 다국어화는 필요 없고, 실행 시 화면에 찍히는 메시지만 영어로."
+- scripts/ 11개 파일의 사용자 노출 문자열(print/raise/Finding.detail/argparse help)을 전부 영어로 교체. docstring·주석은 한국어 유지(개발자용, 화면 출력 아님).
+- check_document_sync.py 의 "## 블로커"/"없음" 파싱 정규식은 CURRENT.md 템플릿(한국어)을 대상으로 하므로 번역하지 않고 유지.
+- 테스트 15줄 수정: 번역된 메시지를 직접 assert 하던 14줄 + 추가로 발견된 `startswith("protected branch")` 1건(문장 구조가 바뀌어 `in` 검사로 완화).
+- 재검증: `python -m pytest tests/ -q` → 154 passed. `check_secrets.py`/`check_forbidden_patterns.py`/`check_document_sync.py` 전부 exit 0. 임시 저장소에서 preflight/sign_ai_session/verify_project 직접 실행해 영어 출력 육안 확인.
+- README.md·README.ko.md 의 인용된 CLI 출력 예시(check_document_sync, verify_release 변조 예시)를 실제 새 영어 출력으로 갱신. README.md 의 "CLI 출력은 한국어" 안내문 제거, README.ko.md 에는 반대로 "CLI 출력은 영어" 안내문 추가.
 
 ## Phase 8 독립 감사 결과 (완료)
 

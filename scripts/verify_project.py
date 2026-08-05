@@ -49,7 +49,7 @@ def _run_check(name: str, argv: list[str], *, cwd: Path, log_dir: Path,
     tool = argv[0] if argv else ""
     if not tool or shutil.which(tool) is None:
         return {"name": name, "status": "NOT_RUN", "command": command_str,
-                "exit_code": None, "detail": f"실행 도구를 찾을 수 없음: {tool or '(빈 명령)'}"}
+                "exit_code": None, "detail": f"tool not found: {tool or '(empty command)'}"}
     started = now_iso()
     log_dir.mkdir(parents=True, exist_ok=True)
     safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in name)
@@ -65,11 +65,11 @@ def _run_check(name: str, argv: list[str], *, cwd: Path, log_dir: Path,
         detail = f"exit code {exit_code}"
     except subprocess.TimeoutExpired:
         exit_code, status = None, "FAIL"
-        output = f"타임아웃 ({COMMAND_TIMEOUT_SECONDS}s) 초과"
+        output = f"timed out (exceeded {COMMAND_TIMEOUT_SECONDS}s)"
         detail = output
     except OSError as exc:
         exit_code, status = None, "FAIL"
-        output = f"실행 실패: {exc}"
+        output = f"execution failed: {exc}"
         detail = output
     log_file.write_text(f"$ {command_str}\n\n{output}\n", encoding="utf-8")
     return {"name": name, "status": status, "command": command_str,
@@ -89,22 +89,22 @@ def run_verification(workspace: Path, config_path: str | None = None,
 
     if config_error:
         checks.append({"name": "config", "status": "FAIL",
-                       "detail": f"설정 오류: {config_error}"})
+                       "detail": f"config error: {config_error}"})
 
     # 1) 사용자 정의 검증 명령 (문법 검사·정적 분석 포함, 언어 비의존)
     verify_commands = [c for c in config.get("verify_commands", [])]
     if verify_commands:
         for command in verify_commands:
             if not str(command).strip():
-                checks.append({"name": "verify:(빈 명령)", "status": "FAIL",
-                               "detail": "verify_commands 에 빈 명령이 있음"})
+                checks.append({"name": "verify:(empty command)", "status": "FAIL",
+                               "detail": "verify_commands contains an empty command"})
                 continue
             argv = _split_command(str(command))
             checks.append(_run_check(f"verify:{argv[0]}", argv, cwd=ws, log_dir=log_dir,
                                      display_command=str(command)))
     else:
         checks.append({"name": "verify_commands", "status": "NOT_RUN",
-                       "detail": "설정에 verify_commands 미지정 (문법 검사·정적 분석 미실행)"})
+                       "detail": "verify_commands not configured (lint/static analysis not run)"})
 
     # 2) 단위 테스트
     test_command = str(config.get("test_command", "") or "")
@@ -113,7 +113,7 @@ def run_verification(workspace: Path, config_path: str | None = None,
                                  log_dir=log_dir, display_command=test_command))
     else:
         checks.append({"name": "tests", "status": "NOT_RUN",
-                       "detail": "설정에 test_command 미지정"})
+                       "detail": "test_command not configured"})
 
     # 3) 시크릿 검사·금지 패턴 검사 연결 (본 표준 저장소의 검사기를 실행)
     for name, script in (("secrets", "check_secrets.py"),
@@ -136,7 +136,7 @@ def run_verification(workspace: Path, config_path: str | None = None,
                                  cwd=ws, log_dir=log_dir, display_command="git diff --check"))
     else:
         checks.append({"name": "git_diff_check", "status": "NOT_RUN",
-                       "detail": "Git 저장소가 아님"})
+                       "detail": "not a Git repository"})
 
     executed = [c for c in checks if c["status"] in ("PASS", "FAIL")]
     has_fail = any(c["status"] == "FAIL" for c in checks)
@@ -176,11 +176,11 @@ def verify_result_hash(report: dict) -> bool:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="verify_project", description="프로젝트별 검증 명령 실행기")
-    parser.add_argument("--config", default=None, help="설정 파일 경로 (기본: .ai-standard.* 자동 탐색)")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
-    parser.add_argument("--out", default=None, help="결과 저장 경로 (기본: .ai/verification.json)")
-    parser.add_argument("--json", action="store_true", help="JSON 형식으로 출력")
+    parser = argparse.ArgumentParser(prog="verify_project", description="Run project-specific verification commands")
+    parser.add_argument("--config", default=None, help="config file path (default: auto-detect .ai-standard.*)")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
+    parser.add_argument("--out", default=None, help="result output path (default: .ai/verification.json)")
+    parser.add_argument("--json", action="store_true", help="output as JSON")
     return parser
 
 

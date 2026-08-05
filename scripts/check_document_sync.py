@@ -12,6 +12,9 @@
   - 코드에서 쓰는 오류 코드가 프로젝트 ERROR_CATALOG 에 등록됐는지 (카탈로그가 있을 때만)
 
 모든 자연어 문서 내용을 판정하려 하지 않는다.
+
+CURRENT.md 의 "## 블로커"/"없음" 표기는 templates/ 관례(한국어)를 그대로 검사한다 —
+이 검사 로직 자체는 CLI 출력 번역과 무관하게 유지한다.
 """
 from __future__ import annotations
 
@@ -41,7 +44,7 @@ _CATALOG_LOCATIONS = ("ERROR_CATALOG.md", "docs/ERROR_CATALOG.md")
 def _check_readme_references(ws: Path) -> list[dict]:
     readme = ws / "README.md"
     if not readme.is_file():
-        return [{"check": "readme_references", "status": "NOT_RUN", "detail": "README.md 없음"}]
+        return [{"check": "readme_references", "status": "NOT_RUN", "detail": "README.md not found"}]
     findings = []
     missing = []
     refs = sorted(set(_PATH_REF.findall(readme.read_text(encoding="utf-8", errors="replace"))))
@@ -50,45 +53,45 @@ def _check_readme_references(ws: Path) -> list[dict]:
             missing.append(ref)
     if missing:
         findings.append({"check": "readme_references", "status": "FAIL",
-                         "detail": f"README 가 참조하는 경로가 없음: {', '.join(missing[:10])}"})
+                         "detail": f"README references path(s) that don't exist: {', '.join(missing[:10])}"})
     else:
         findings.append({"check": "readme_references", "status": "PASS",
-                         "detail": f"README 참조 경로 {len(refs)}건 모두 존재"})
+                         "detail": f"all {len(refs)} README-referenced path(s) exist"})
     return findings
 
 
 def _check_required_documents(ws: Path, config: dict) -> list[dict]:
     required = config.get("required_documents", [])
     if not required:
-        return [{"check": "required_documents", "status": "NOT_RUN", "detail": "설정에 필수 문서 미지정"}]
+        return [{"check": "required_documents", "status": "NOT_RUN", "detail": "no required_documents configured"}]
     missing = [doc for doc in required if not (ws / doc).is_file()]
     if missing:
         return [{"check": "required_documents", "status": "FAIL",
-                 "detail": f"필수 문서 누락: {', '.join(missing)}"}]
+                 "detail": f"required document(s) missing: {', '.join(missing)}"}]
     return [{"check": "required_documents", "status": "PASS",
-             "detail": f"필수 문서 {len(required)}건 모두 존재"}]
+             "detail": f"all {len(required)} required document(s) exist"}]
 
 
 def _check_config_commands(config: dict, config_error: str | None) -> list[dict]:
     if config_error:
-        return [{"check": "config_commands", "status": "FAIL", "detail": f"설정 오류: {config_error}"}]
+        return [{"check": "config_commands", "status": "FAIL", "detail": f"config error: {config_error}"}]
     empty = [i for i, c in enumerate(config.get("verify_commands", [])) if not str(c).strip()]
     if empty:
         return [{"check": "config_commands", "status": "FAIL",
-                 "detail": f"verify_commands 에 빈 명령 (index: {empty})"}]
+                 "detail": f"verify_commands has empty command(s) (index: {empty})"}]
     return [{"check": "config_commands", "status": "PASS",
-             "detail": "설정 명령이 비어 있지 않음"}]
+             "detail": "config commands are non-empty"}]
 
 
 def _check_current_status_consistency(ws: Path) -> list[dict]:
     current = ws / ".ai" / "CURRENT.md"
     status = ws / ".ai" / "STATUS.md"
     if not current.is_file() and not status.is_file():
-        return [{"check": "current_status", "status": "NOT_RUN", "detail": ".ai/CURRENT.md·STATUS.md 없음"}]
+        return [{"check": "current_status", "status": "NOT_RUN", "detail": ".ai/CURRENT.md and STATUS.md not found"}]
     if current.is_file() != status.is_file():
         missing = "STATUS.md" if current.is_file() else "CURRENT.md"
         return [{"check": "current_status", "status": "FAIL",
-                 "detail": f".ai/{missing} 만 누락됨 (쌍으로 유지해야 함)"}]
+                 "detail": f"only .ai/{missing} is missing (the pair should be kept together)"}]
     status_text = status.read_text(encoding="utf-8", errors="replace")
     current_text = current.read_text(encoding="utf-8", errors="replace")
     # 표 셀에 FAIL 이 기록되어 있는데 CURRENT 블로커가 '없음'이면 모순
@@ -99,14 +102,14 @@ def _check_current_status_consistency(ws: Path) -> list[dict]:
     blocker_none = bool(blocker_match and "없음" in blocker_match.group(1))
     if has_fail_cell and blocker_none:
         return [{"check": "current_status", "status": "FAIL",
-                 "detail": "STATUS 에 FAIL 항목이 있으나 CURRENT 블로커는 '없음' (모순)"}]
-    return [{"check": "current_status", "status": "PASS", "detail": "CURRENT/STATUS 모순 없음"}]
+                 "detail": "STATUS has a FAIL entry but CURRENT's blocker section says 'none' (contradiction)"}]
+    return [{"check": "current_status", "status": "PASS", "detail": "no contradiction between CURRENT and STATUS"}]
 
 
 def _check_status_evidence(ws: Path) -> list[dict]:
     status = ws / ".ai" / "STATUS.md"
     if not status.is_file():
-        return [{"check": "status_evidence", "status": "NOT_RUN", "detail": ".ai/STATUS.md 없음"}]
+        return [{"check": "status_evidence", "status": "NOT_RUN", "detail": ".ai/STATUS.md not found"}]
     problems = []
     for lineno, line in enumerate(status.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
         row = _TABLE_ROW.match(line.strip())
@@ -115,19 +118,19 @@ def _check_status_evidence(ws: Path) -> list[dict]:
         cells = [c.strip() for c in row.group(1).split("|")]
         # | 항목 | 상태 | 근거 | 형식(3칸)만 판정한다. 상태만 있는 2칸 표는 대상이 아니다.
         if len(cells) == 3 and cells[1] == "PASS" and not cells[2]:
-            problems.append(f"{lineno}행: '{cells[0]}' PASS 인데 근거 없음")
+            problems.append(f"line {lineno}: '{cells[0]}' is PASS but has no evidence")
     if problems:
         return [{"check": "status_evidence", "status": "FAIL",
                  "detail": "; ".join(problems[:5])}]
     return [{"check": "status_evidence", "status": "PASS",
-             "detail": "PASS 항목의 근거 칸이 채워져 있음"}]
+             "detail": "evidence column is filled in for all PASS entries"}]
 
 
 def _check_error_codes_cataloged(ws: Path) -> list[dict]:
     catalog_path = next((ws / loc for loc in _CATALOG_LOCATIONS if (ws / loc).is_file()), None)
     if catalog_path is None:
         return [{"check": "error_codes", "status": "NOT_RUN",
-                 "detail": "프로젝트 ERROR_CATALOG.md 없음 (templates/ 는 양식이므로 제외)"}]
+                 "detail": "no project ERROR_CATALOG.md (templates/ is excluded as a form)"}]
     catalog_text = catalog_path.read_text(encoding="utf-8", errors="replace")
     used: dict[str, str] = {}
     for path in sorted(ws.rglob("*")):
@@ -143,9 +146,9 @@ def _check_error_codes_cataloged(ws: Path) -> list[dict]:
     if missing:
         detail = ", ".join(f"{c} ({p})" for c, p in sorted(missing.items())[:5])
         return [{"check": "error_codes", "status": "FAIL",
-                 "detail": f"카탈로그 미등록 오류 코드: {detail}"}]
+                 "detail": f"error code(s) not registered in the catalog: {detail}"}]
     return [{"check": "error_codes", "status": "PASS",
-             "detail": f"사용된 오류 코드 {len(used)}건 모두 카탈로그에 등록됨"}]
+             "detail": f"all {len(used)} used error code(s) are registered in the catalog"}]
 
 
 def run_document_sync(workspace: Path, config_path: str | None = None) -> dict:
@@ -174,10 +177,10 @@ def run_document_sync(workspace: Path, config_path: str | None = None) -> dict:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="check_document_sync", description="기계 판정 가능한 문서 정합성 검사")
-    parser.add_argument("--config", default=None, help="설정 파일 경로")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
-    parser.add_argument("--json", action="store_true", help="JSON 형식으로 출력")
+    parser = argparse.ArgumentParser(prog="check_document_sync", description="Machine-checkable document sync checks")
+    parser.add_argument("--config", default=None, help="config file path")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
+    parser.add_argument("--json", action="store_true", help="output as JSON")
     return parser
 
 

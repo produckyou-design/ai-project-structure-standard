@@ -138,7 +138,7 @@ def test_invalid_config_regex_is_reported_not_crash(tmp_path: Path) -> None:
     report = _scan(tmp_path, ["a.py"], config)
     assert report["status"] == "FAIL"
     assert any(f["pattern"].startswith("invalid_pattern:") for f in report["findings"])
-    assert "정규식 컴파일 실패" in report["findings"][0]["masked"]
+    assert "regex compile failed" in report["findings"][0]["masked"]
 
 
 def test_cli_text_output(tmp_path: Path, capsys) -> None:

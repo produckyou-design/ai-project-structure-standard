@@ -98,7 +98,7 @@ def test_ledger_tamper_detected_on_append(git_repo: Path):
         .replace(ledger[0]["task"], "변조된 작업"),
         encoding="utf-8",
     )
-    with pytest.raises(common.GitError, match="무결성 위반"):
+    with pytest.raises(common.GitError, match="integrity violation"):
         sign.run_start(git_repo, task="변조 후 append 시도")
 
 

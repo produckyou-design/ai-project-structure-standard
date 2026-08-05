@@ -325,11 +325,6 @@ environment). Values are shown exactly as masked by
 `scripts/common.mask_sensitive` — the raw secret never appears here or
 anywhere else in this repository.
 
-> **Note:** the tools' own console output is in Korean (that's the
-> language the scripts print in) — only the surrounding prose in this
-> README is translated. CLI flags, file paths, and JSON field names are
-> unaffected.
-
 ```bash
 python scripts/sign_ai_session.py start --task "demo: edit the README example" \
   --provider anthropic --claimed-model claude-sonnet-5 --role implementer \
@@ -407,12 +402,12 @@ python scripts/check_document_sync.py
 
 ```text
 document sync: PASS  (pass 4 / fail 0 / not_run 2)
-  [PASS   ] readme_references: README 참조 경로 N건 모두 존재
-  [NOT_RUN] required_documents: 설정에 필수 문서 미지정
-  [PASS   ] config_commands: 설정 명령이 비어 있지 않음
-  [PASS   ] current_status: CURRENT/STATUS 모순 없음
-  [PASS   ] status_evidence: PASS 항목의 근거 칸이 채워져 있음
-  [NOT_RUN] error_codes: 프로젝트 ERROR_CATALOG.md 없음 (templates/ 는 양식이므로 제외)
+  [PASS   ] readme_references: all 21 README-referenced path(s) exist
+  [NOT_RUN] required_documents: no required_documents configured
+  [PASS   ] config_commands: config commands are non-empty
+  [PASS   ] current_status: no contradiction between CURRENT and STATUS
+  [PASS   ] status_evidence: evidence column is filled in for all PASS entries
+  [NOT_RUN] error_codes: no project ERROR_CATALOG.md (templates/ is excluded as a form)
 ```
 
 ## Release and rollback
@@ -438,7 +433,7 @@ actually reproduced result):
 
 ```text
 verify_release: FAIL  (pass 12 / fail 1 / not_run 0)
-  [FAIL   ] artifact_hashes: 1개 artifact 문제: dist/app.txt: 해시 불일치 (변조 의심)
+  [FAIL   ] artifact_hashes: 1 artifact issue(s): dist/app.txt: hash mismatch (possible tampering)
 ```
 
 Deleting the manifest file itself doesn't get you through either —

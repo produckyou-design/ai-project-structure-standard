@@ -31,7 +31,7 @@ def test_handoff_bundle_created(git_repo: Path):
     assert bundle.exists()
     assert bundle.is_relative_to(git_repo / ".ai" / "handoffs")
     text = bundle.read_text(encoding="utf-8")
-    for header in ("# AI 세션 인계 번들", "## 1. 개요", "## 3. 변경 사항", "## 4.", "## 5. 블로커", "## 6. 다음 작업"):
+    for header in ("# AI Session Handoff Bundle", "## 1. Overview", "## 3. Changes", "## 4.", "## 5. Blockers", "## 6. Next steps"):
         assert header in text
     assert "Phase 1 테스트" in text
 

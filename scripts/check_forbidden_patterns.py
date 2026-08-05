@@ -125,7 +125,7 @@ def _compile_patterns(patterns: list[tuple[str, str, str]],
         except re.error as exc:
             findings.append(
                 Finding(path, 0, f"invalid_pattern:{pid}", "HIGH",
-                        f"정규식 컴파일 실패: {exc}", "FAIL")
+                        f"regex compile failed: {exc}", "FAIL")
             )
     return compiled
 
@@ -147,7 +147,7 @@ def run_scan(workspace: Path, paths: list[str], config: dict[str, Any] | None) -
     # "0건 탐지 → PASS" 가 되므로 명시적으로 실패시킨다.
     for raw in missing_scan_paths(root, paths):
         findings.append(Finding(raw, 0, "missing_scan_path", "HIGH",
-                                "지정한 경로가 존재하지 않아 검사하지 못함", "FAIL"))
+                                "specified path does not exist, could not be scanned", "FAIL"))
     for file_path in collect_files(root, paths):
         rel = str(file_path.relative_to(root)) if file_path.is_relative_to(root) else str(file_path)
         findings.extend(scan_file(file_path, rel, compiled, parsed))
@@ -171,16 +171,16 @@ def load_config_data(workspace: Path, config_path: str | None) -> tuple[dict[str
         return None, None
     config, error, _ = load_config(workspace, config_path)
     if error:
-        return None, f"설정 오류 (기본값으로 진행): {error}"
+        return None, f"config error (proceeding with defaults): {error}"
     return config, None
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="check_forbidden_patterns", description="구조적 보안 금지 패턴 탐지")
-    parser.add_argument("--workspace", default=None, help="작업 저장소 경로 (기본: 현재 디렉터리)")
-    parser.add_argument("--path", action="append", default=[], help="스캔할 파일/디렉터리 (반복 가능)")
-    parser.add_argument("--config", default=None, help="설정 파일 경로")
-    parser.add_argument("--json", action="store_true", help="JSON 형식으로 출력")
+    parser = argparse.ArgumentParser(prog="check_forbidden_patterns", description="Detect structural-security forbidden patterns")
+    parser.add_argument("--workspace", default=None, help="workspace path (default: current directory)")
+    parser.add_argument("--path", action="append", default=[], help="file/directory to scan (repeatable)")
+    parser.add_argument("--config", default=None, help="config file path")
+    parser.add_argument("--json", action="store_true", help="output as JSON")
     return parser
 
 
@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     exceptions = [e for e in (config or {}).get("allow_exceptions", []) if isinstance(e, str)]
     _, malformed = parse_exception_entries(exceptions)
     for entry in malformed:
-        print(f"[WARN ] 잘못된 예외 형식 (무시됨, '파일:패턴:이유[:만료]' 형식 필요): {entry}",
+        print(f"[WARN ] malformed exception entry (ignored, expected 'file:pattern:reason[:expiry]'): {entry}",
               file=sys.stderr)
     report = run_scan(workspace, args.path, config)
     if args.json:
