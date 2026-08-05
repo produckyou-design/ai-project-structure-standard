@@ -1,0 +1,21 @@
+{
+  "name": "airframe",
+  "displayName": "Airframe",
+  "version": "0.1.0",
+  "description": "A general-purpose development standard that enforces layered Coordinator architecture, signed and hash-chained AI work sessions, structural security checks, verification gates, and safe release/rollback for AI-driven software projects.",
+  "author": {
+    "name": "produckyou-design",
+    "url": "https://github.com/produckyou-design"
+  },
+  "homepage": "https://github.com/produckyou-design/ai-project-structure-standard",
+  "repository": "https://github.com/produckyou-design/ai-project-structure-standard",
+  "license": "MIT",
+  "keywords": [
+    "ai-agents",
+    "software-standard",
+    "coordinator-architecture",
+    "verification",
+    "release-gate",
+    "audit-trail"
+  ]
+}
