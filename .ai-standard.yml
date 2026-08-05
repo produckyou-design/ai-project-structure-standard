@@ -1,0 +1,23 @@
+# .ai-standard.yml — 이 저장소(ai-project-structure-standard)의 프로젝트 설정
+#
+# 생성 근거: Phase 3 (2026-08-04) — 시크릿/금지 패턴 검사기가
+# 저장소 자체(테스트 픽스처, 표준 문서, 작업 스냅샷)의 의도적 샘플 문자열을
+# 탐지하므로, 아래 예외로 명시적으로 허용하고 이유·만료조건을 남긴다.
+# 관련 규칙: docs/SECURITY_STANDARD.md §4.1, FLASH_BUILD_PROMPT.md §12
+
+project_name: ai-project-structure-standard
+risk_level: medium
+
+test_command: pytest
+verify_commands:
+  - pytest
+
+# 예외 형식: "파일:패턴:허용이유[:만료조건]"
+#   파일·패턴은 * 와일드카드 지원, 패턴은 id 또는 부분 문자열 일치
+allow_exceptions:
+  - "tests/*.py:*:테스트 픽스처의 synthetic token과 금지 패턴 샘플 (Phase 3 규칙 §5, 실제 비밀값 아님):2026-12-31 재검토"
+  - "docs/*.md:*:구조적 보안 패턴을 설명하는 표준 문서의 샘플 문자열:2026-12-31 재검토"
+  - "templates/*.md:*:구조적 보안 패턴을 설명하는 템플릿의 샘플 문자열:2026-12-31 재검토"
+  - ".ai/checkpoints/*:*:자동 생성된 작업 스냅샷 (소스 복사본 포함):2026-12-31 재검토"
+  - "FLASH_BUILD_PROMPT.md:*:마스터 프롬프트 원본 (금지 패턴 정의 포함, 수정 금지 문서):상시"
+  - ".ai-standard.example.yml:*:설정 예시의 forbidden_patterns 샘플 값:2026-12-31 재검토"

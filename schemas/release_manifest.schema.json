@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-project-structure-standard/schemas/release_manifest.schema.json",
+  "title": "Release Manifest",
+  "description": "create_release_manifest.py 가 저장하는 기계 판독 가능한 릴리스 후보 manifest (.ai/release_manifest.json). verify_release.py 가 이 구조를 읽어 검증 후 변조·롤백 경로 부재를 차단한다.",
+  "type": "object",
+  "required": [
+    "release_id", "version", "source_commit", "artifacts",
+    "total_artifact_hash", "manifest_hash", "created_at"
+  ],
+  "properties": {
+    "release_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "릴리스 후보 식별자 (예: rel_<타임스탬프>_<임의16진수>)."
+    },
+    "version": { "type": "string", "minLength": 1 },
+    "source_commit": {
+      "type": "string",
+      "description": "manifest 생성 시점의 git HEAD. 커밋이 없으면 NONE."
+    },
+    "build_run_id": { "type": "string" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "size_bytes"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "total_artifact_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "artifacts[].sha256 를 정렬해 이어붙인 문자열의 SHA-256."
+    },
+    "manifest_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "manifest_hash 필드를 제외한 본문의 정규 JSON SHA-256."
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "verification_run_id": {
+      "type": "string",
+      "description": "이 릴리스가 근거로 삼는 verification.json 의 verification_run_id. 지정되지 않으면 빈 문자열."
+    },
+    "rollback_point": {
+      "type": "string",
+      "description": "롤백 시 되돌아갈 지점(커밋/태그/이전 배포 식별자). require_rollback=true 이면 필수."
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "인간 승인자. require_human_approval=true 이면 필수."
+    }
+  },
+  "additionalProperties": false
+}

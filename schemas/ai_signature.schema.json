@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-project-structure-standard/schemas/ai_signature.schema.json",
+  "title": "AI Signature",
+  "description": "AI 작업 시작·종료 서명 ledger 항목 (.ai/ledger.jsonl 의 각 줄)",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/definitions/start_signature" },
+    { "$ref": "#/definitions/end_signature" }
+  ],
+  "definitions": {
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "hash_or_empty": {
+      "description": "첫 번째 ledger 항목은 previous_entry_hash 가 빈 문자열이다.",
+      "anyOf": [
+        { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        { "const": "" }
+      ]
+    },
+    "start_signature": {
+      "type": "object",
+      "required": [
+        "kind", "run_id", "provider", "actual_model_id", "claimed_model", "role",
+        "effort", "started_at", "workspace", "branch", "base_commit",
+        "git_status_hash", "task", "allowed_scope", "forbidden_scope",
+        "expected_tests", "documents_read", "previous_entry_hash", "entry_hash"
+      ],
+      "properties": {
+        "kind": { "const": "start" },
+        "run_id": { "type": "string", "minLength": 1 },
+        "parent_run_id": { "type": "string" },
+        "provider": { "type": "string" },
+        "actual_model_id": { "type": "string", "description": "확인 불가 시 UNKNOWN" },
+        "claimed_model": { "type": "string", "description": "자기신고 모델 ID. 검증된 값으로 단정하지 않음" },
+        "role": { "type": "string" },
+        "effort": { "type": "string" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "workspace": { "type": "string" },
+        "branch": { "type": "string" },
+        "base_commit": { "type": "string" },
+        "git_status_hash": { "$ref": "#/definitions/hash" },
+        "task": { "type": "string" },
+        "allowed_scope": { "type": "string" },
+        "forbidden_scope": { "type": "string" },
+        "expected_tests": { "type": "string" },
+        "documents_read": { "type": "string" },
+        "previous_entry_hash": { "$ref": "#/definitions/hash_or_empty" },
+        "entry_hash": { "$ref": "#/definitions/hash" }
+      },
+      "additionalProperties": true
+    },
+    "end_signature": {
+      "type": "object",
+      "required": [
+        "kind", "run_id", "provider", "actual_model_id", "role", "status",
+        "ended_at", "base_commit", "end_commit", "diff_hash", "changed_files",
+        "created_files", "deleted_files", "tests_run", "tests_passed",
+        "tests_failed", "documents_updated", "decisions_made", "known_issues",
+        "remaining_work", "rollback_point", "handoff_note",
+        "previous_entry_hash", "entry_hash"
+      ],
+      "properties": {
+        "kind": { "const": "end" },
+        "run_id": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string" },
+        "actual_model_id": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "enum": ["success", "fail", "aborted"] },
+        "ended_at": { "type": "string", "format": "date-time" },
+        "base_commit": { "type": "string" },
+        "end_commit": { "type": "string" },
+        "diff_hash": { "$ref": "#/definitions/hash" },
+        "changed_files": { "type": "array", "items": { "type": "string" } },
+        "created_files": { "type": "array", "items": { "type": "string" } },
+        "deleted_files": { "type": "array", "items": { "type": "string" } },
+        "tests_run": { "type": "string" },
+        "tests_passed": { "type": "string" },
+        "tests_failed": { "type": "string" },
+        "documents_updated": { "type": "string" },
+        "decisions_made": { "type": "string" },
+        "known_issues": { "type": "string" },
+        "remaining_work": { "type": "string" },
+        "rollback_point": { "type": "string" },
+        "handoff_note": { "type": "string" },
+        "previous_entry_hash": { "$ref": "#/definitions/hash_or_empty" },
+        "entry_hash": { "$ref": "#/definitions/hash" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

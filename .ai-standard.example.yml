@@ -1,0 +1,57 @@
+# .ai-standard.example.yml — AI Project Structure Standard 프로젝트 설정 예시
+#
+# 이 파일을 프로젝트 루트에 복사한 뒤 값을 채운다.
+# 파일명은 다음 중 하나를 사용한다:
+#   .ai-standard.json / .ai-standard.yml / .ai-standard.yaml
+# 설정 파일이 없으면 preflight 는 아래 안전한 기본값으로 동작한다.
+
+project_name: my-project
+risk_level: medium          # low | medium | high
+
+# preflight 가 "protected branch 에서 직접 작업" 을 FAIL 로 판정하는 브랜치 목록
+protected_branches:
+  - main
+  - master
+  - develop
+
+# preflight 가 존재 여부만 확인하는 명령들 (실행은 Phase 5 verify_project 가 담당)
+verify_commands:
+  - pytest
+  - mypy
+
+test_command: pytest
+
+# Phase 3 금지 패턴 검사에서 사용할 패턴 (빌드 산출물·코드에서 검사)
+forbidden_patterns:
+  - "shell=True"
+  - "eval("
+  - "verify=False"
+
+# Phase 3: 금지 패턴/시크릿 탐지의 허용 예외 목록
+#   형식: "파일:패턴:허용이유:만료조건" 또는 "파일:패턴:허용이유"
+allow_exceptions: []
+
+# 허용 외부 도메인 (네트워크 경계 통제 시 사용)
+allowed_domains:
+  - api.example.com
+
+# 누락되면 preflight 가 FAIL 로 보고하는 문서
+required_documents:
+  - README.md
+  - docs/ARCHITECTURE.md
+
+# 변경되면 preflight 가 FAIL 로 보고하는 파일
+protected_files:
+  - SECURITY.md
+
+# Git 에 추적되면 preflight 가 FAIL 로 보고하는 시크릿 파일 패턴
+secret_files:
+  - .env
+  - "*.pem"
+  - "*.key"
+  - id_rsa
+
+# Phase 6 릴리스 게이트 관련
+release_enabled: false
+require_human_approval: true
+require_rollback: true

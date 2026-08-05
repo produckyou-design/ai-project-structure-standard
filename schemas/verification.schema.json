@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-project-structure-standard/schemas/verification.schema.json",
+  "title": "Verification Result",
+  "description": "verify_project.py 가 저장하는 기계 판독 가능한 검증 결과 (.ai/verification.json). 실행하지 않은 검사는 PASS 가 아니라 NOT_RUN 이다.",
+  "type": "object",
+  "required": [
+    "verification_run_id", "workspace", "commit", "started_at", "ended_at",
+    "status", "checks", "summary", "result_hash"
+  ],
+  "properties": {
+    "verification_run_id": { "type": "string", "minLength": 1 },
+    "workspace": { "type": "string" },
+    "commit": {
+      "type": "string",
+      "description": "검증 대상 커밋 (HEAD). 커밋이 없으면 NONE."
+    },
+    "worktree_status_hash": {
+      "type": "string",
+      "description": "검증 시점 작업트리 상태 해시. 검증 후 변경 감지에 사용."
+    },
+    "config_source": { "type": "string" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "NOT_RUN"],
+      "description": "FAIL 이 하나라도 있으면 FAIL. 실행된 검사가 없으면 NOT_RUN."
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] },
+          "command": { "type": "string" },
+          "exit_code": { "type": ["integer", "null"] },
+          "started_at": { "type": "string" },
+          "ended_at": { "type": "string" },
+          "log_file": { "type": "string" },
+          "detail": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["pass", "fail", "not_run"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "not_run": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "result_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "result_hash 필드를 제외한 본문의 정규 JSON SHA-256."
+    }
+  },
+  "additionalProperties": false
+}

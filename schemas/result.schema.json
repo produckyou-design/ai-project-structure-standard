@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-project-structure-standard/schemas/result.schema.json",
+  "title": "Standard Result",
+  "description": "Coordinator 가 호출자에게 돌려주는 언어 중립 결과 계약. success 여부와 무관하게 같은 봉투를 사용한다.",
+  "type": "object",
+  "required": ["success", "trace_id", "contract_version"],
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "true 면 data 가 유효, false 면 error 가 채워진다."
+    },
+    "data": {
+      "description": "성공 시 결과 데이터. 실패 시 null. 구조는 capability/operation 별 계약을 따른다."
+    },
+    "error": {
+      "description": "실패 시 error.schema.json 을 따르는 오류 객체. 성공 시 null.",
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "error.schema.json" }
+      ]
+    },
+    "source": {
+      "type": "string",
+      "description": "결과를 만든 실제 출처 (예: cache, repository.file, adapter.provider_x)."
+    },
+    "fetched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "데이터가 실제로 조회·생성된 시각. 캐시 응답이면 캐시 저장 시각."
+    },
+    "is_stale": {
+      "type": "boolean",
+      "default": false,
+      "description": "신선도 기준을 지난 데이터(예: 실패 시 캐시 폴백)이면 true."
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "요청의 trace_id 를 그대로 반환한다."
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "contract_version": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "success": { "const": false } } },
+      "then": {
+        "required": ["error"],
+        "properties": { "error": { "$ref": "error.schema.json" } }
+      }
+    },
+    {
+      "if": { "properties": { "success": { "const": true } } },
+      "then": {
+        "properties": { "error": { "type": "null" } }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

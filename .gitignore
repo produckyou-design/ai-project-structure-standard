@@ -1,0 +1,33 @@
+# Freebuff 클라이언트 데이터 (저장소에 포함하지 않음)
+.freebuff/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 테스트 산출물
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# 예제 실행 시 생성되는 로컬 데이터
+examples/**/*.data.json
+
+# 로컬 임시 파일
+*.log
+.tmp/
+.DS_Store
+Thumbs.db
+
+# .ai/ 작업 산출물: ledger.jsonl(영구 감사 기록)과 CURRENT/STATUS(현재 상태 문서)만
+# 추적한다. 체크포인트(커밋 전 스냅샷)·인계 번들·검증 로그·1회성 검증/릴리스
+# 산출물은 재생성 가능하거나 세션 국소적이라 저장소에 영구 보관하지 않는다.
+.ai/checkpoints/
+.ai/handoffs/
+.ai/verification_logs/
+.ai/verification.json
+.ai/release_manifest.json

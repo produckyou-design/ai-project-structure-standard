@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-project-structure-standard/schemas/request.schema.json",
+  "title": "Standard Request",
+  "description": "도메인 Coordinator 사이에서 사용하는 언어 중립 요청 계약. 호출자(UI/Route/다른 Coordinator)가 생성해 Coordinator 에 전달한다.",
+  "type": "object",
+  "required": ["request_id", "trace_id", "capability", "operation", "contract_version"],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "이 요청 1건의 고유 ID. 재시도하면 새 request_id 를 발급한다."
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "사용자 행위 1건을 UI→Coordinator→Service→Adapter 전 구간에서 추적하는 ID. 재시도해도 유지된다."
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 1,
+      "description": "대상 도메인 능력 (예: notes, auth, market_data). Coordinator 라우팅 기준."
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "capability 안에서 수행할 연산 (예: add, list, refresh)."
+    },
+    "parameters": {
+      "type": "object",
+      "description": "연산 입력. 구조는 capability/operation 별 계약을 따른다.",
+      "default": {}
+    },
+    "caller": {
+      "type": "string",
+      "description": "요청 출처 (예: ui.main_window, route./status, coordinator.update)."
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high"],
+      "default": "normal"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "이 요청의 허용 시간. Coordinator 가 타임아웃 정책의 소유자다."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "contract_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "이 계약의 버전 (예: 1.0). 수신 측은 지원하지 않는 버전을 거부할 수 있다."
+    }
+  },
+  "additionalProperties": false
+}
