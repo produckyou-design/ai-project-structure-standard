@@ -58,6 +58,81 @@ AI가 여러 세션에 걸쳐 코드를 작성하면 다음 문제가 반복된�
 (NOT_RUN)으로 남는다.** 확인하지 않은 걸 확인했다고 적지 않는다 — 이게
 전체 표준을 관통하는 단 하나의 규칙이다.
 
+## 구조와 흐름
+
+### 1. 계층형 Coordinator — 이렇게 짠다
+
+도메인마다 독립된 Coordinator를 두고, 요청은 반드시 이 계층을 통과한다.
+Coordinator는 요청 정규화·순서·캐시·오류 정규화만 담당하고, 실제 파일·DB·
+외부 API 접근은 Adapter/Repository가 전담한다(`docs/ARCHITECTURE_STANDARD.md`).
+
+```mermaid
+flowchart TD
+    UI["UI / API / 외부 요청 / 백그라운드 작업"]
+    Entry["Application Entry Layer"]
+    AuthC["AuthCoordinator"]
+    NewsC["NewsCoordinator"]
+    PayC["PaymentCoordinator"]
+    AuthS["Service"]
+    NewsS["Service"]
+    PayS["Service"]
+    AuthA["Adapter / Repository"]
+    NewsA["Adapter / Repository"]
+    PayA["Adapter / Repository"]
+    Ext[("DB · 파일 · 외부 API · OS")]
+
+    UI --> Entry
+    Entry --> AuthC & NewsC & PayC
+    AuthC --> AuthS --> AuthA --> Ext
+    NewsC --> NewsS --> NewsA --> Ext
+    PayC --> PayS --> PayA --> Ext
+    UI -.->|"금지: 직접 호출 -> 상태 중복"| Ext
+
+    style UI fill:#eef,stroke:#557
+    style Ext fill:#fee,stroke:#a55
+```
+
+### 2. 이렇게는 안 짠다 — 반대쪽 실패
+
+구조가 없으면 둘 중 하나로 무너진다: 위 그림의 점선처럼 UI가 DB·외부 API를
+직접 찔러 상태가 중복되거나, 또는 아래처럼 모든 도메인 로직을 하나가
+삼킨 전역 오케스트레이터가 탄생한다. 둘 다 이 표준이 금지하는 것이다.
+
+```mermaid
+flowchart TD
+    UI2["UI / API / 백그라운드 작업"]
+    Glob["GlobalOrchestrator<br/>(인증 + 뉴스 + 결제 + 파일 + 캐시... 전부)"]
+    Ext2[("DB · 파일 · 외부 API")]
+    UI2 --> Glob --> Ext2
+
+    style Glob fill:#fee,stroke:#a55,stroke-width:2px
+```
+
+### 3. 서명 → 검증 → 릴리스 흐름 — 이래서 신뢰할 수 있다
+
+AI 작업 1건이 배포 후보가 되기까지 거치는 실제 관문이다. 각 화살표는
+`scripts/`의 실제 명령과 1:1로 대응한다 (전체 대응표는 위 "왜 Airframe인가").
+
+```mermaid
+flowchart LR
+    A["preflight<br/>위험 경계 확인"] --> B["AI 시작 서명<br/>ledger 기록"]
+    B --> C["작업"]
+    C --> D["시크릿 · 금지 패턴<br/>검사"]
+    D --> E["verify_project<br/>PASS / FAIL / NOT_RUN"]
+    E --> F["AI 종료 서명<br/>해시 체인 연결"]
+    F --> G["체크포인트 · 인계 번들"]
+    G --> H["release manifest<br/>+ verify_release"]
+    H -->|"artifact·manifest 변조 감지"| I["배포 차단"]
+    H -->|"13종 검사 전부 PASS"| J["배포 후보 확정<br/>(실제 배포는 사람이 실행)"]
+
+    style I fill:#fee,stroke:#a55
+    style J fill:#efe,stroke:#5a5
+```
+
+각 단계의 실제 실행 결과(마스킹된 서명 JSON, 변조 후 FAIL 재현 포함)는 아래
+"AI 서명 예시"·"검증 예시"·"릴리스와 롤백" 절에 그대로 있다 — 이 다이어그램은
+설명이고, 그 아래는 증거다.
+
 ## 핵심 원칙
 
 - 중앙 계층은 통제하되 실제 기능을 독점하지 않는다.
