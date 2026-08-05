@@ -1,74 +1,90 @@
+[한국어](README.ko.md) | **English**
+
 # Airframe
 
 *(working slug: `ai-project-structure-standard`)*
 
-AI가 여러 세션에 걸쳐 혼자 코드를 계속 짜게 두면, 결국 둘 중 하나로 무너진다.
-UI가 DB와 외부 API를 아무 데서나 직접 찔러 상태가 사방에서 중복되거나 —
-반대로 이걸 막겠다고 모든 로직을 삼킨 거대한 전역 오케스트레이터 하나가
-탄생한다. 둘 다 "구조가 없어서" 생기는 사고다.
+Leave an AI to keep writing code alone across many sessions, and it collapses
+into one of two failure modes. The UI starts poking the DB and external APIs
+directly from anywhere, and the same state gets duplicated all over the
+place — or, in an attempt to prevent that, one giant global orchestrator is
+born that swallows every domain's logic. Both are accidents that happen
+because there's no structure.
 
-더 근본적인 문제는 따로 있다. **AI는 "테스트를 통과했습니다"라고 말할 수 있고,
-그 말이 사실인지 확인할 방법이 이전에는 없었다.** 다음 세션의 AI(또는 다음
-사람)는 그 진술을 믿거나, 처음부터 다시 확인하는 수밖에 없었다.
+There's a deeper problem underneath both. **An AI can say "tests passed,"
+and until now there was no way to check whether that was true.** The AI (or
+person) in the next session either had to trust that claim or verify
+everything from scratch.
 
-Airframe은 항공기의 뼈대(airframe)가 그렇듯, AI가 짜는 코드 아래 놓이는
-구조적 골격이다 — 계층을 강제하고, 이륙 전 점검(preflight)을 거치게 하고,
-모든 작업에 조종사 서명과 블랙박스 기록(해시 체인 ledger)을 남기고, 검증을
-통과하지 못한 화물은 게이트에서 막는다. 추상적 권고가 아니라 실제로 실행되는
-스크립트·스키마·템플릿·예제로 강제한다 — 이 README에 적힌 명령은 전부 실제로
-돌려서 확인한 것이다.
+Airframe is the structural skeleton that sits under the code an AI writes —
+the way an aircraft's airframe holds everything together. It enforces
+layering, runs a preflight check before work starts, leaves a pilot's
+signature and black-box record (a hash-chained ledger) on every piece of
+work, and blocks any cargo that hasn't cleared verification at the gate.
+This isn't abstract advice — it's enforced by scripts, schemas, templates,
+and examples that actually run. Every command in this README was actually
+executed to confirm it works.
 
-특정 언어·프레임워크에 종속되지 않는다. 표준 자체의 도구(`scripts/`)는
-Python으로 구현되어 있지만, 계층 구조·서명·검증·릴리스 원칙은 어떤 언어의
-프로젝트에도 적용할 수 있다.
+It isn't tied to any specific language or framework. The standard's own
+tooling (`scripts/`) is implemented in Python, but the layering, signing,
+verification, and release principles apply to a project written in any
+language.
 
-## 해결하는 문제
+## The problem this solves
 
-AI가 여러 세션에 걸쳐 코드를 작성하면 다음 문제가 반복된다.
+When an AI writes code across many sessions, the same failures keep
+recurring:
 
-- 기능이 커질수록 UI가 DB·외부 API를 직접 호출하는 경로가 늘어나고, 같은 상태를
-  여러 곳이 중복 보관해 회귀가 발생한다.
-- 반대로 이를 막으려고 만든 거대한 전역 오케스트레이터(GlobalOrchestrator)가
-  모든 도메인 로직을 떠안아 수정 비용과 병목이 폭발한다.
-- 어떤 AI가, 어떤 범위를, 실제로 검증했는지 기록이 없어 다음 세션(또는 다음
-  AI)이 이전 작업을 신뢰할 수 없다.
-- "테스트를 실행했다"는 진술과 실제 실행 여부를 구분할 방법이 없다.
-- 검증되지 않았거나 검증 후 변조된 산출물이 그대로 배포된다.
-- 롤백 경로 없이 배포되어 장애 시 되돌릴 방법이 없다.
+- As features grow, the UI ends up calling the DB and external APIs
+  directly more and more, the same state gets duplicated in multiple
+  places, and regressions follow.
+- The attempt to prevent that produces a giant global orchestrator
+  (GlobalOrchestrator) that absorbs every domain's logic, and the cost of
+  changing anything explodes along with the bottleneck.
+- There's no record of which AI verified which scope, so the next session
+  (or the next AI) has no basis to trust prior work.
+- There's no way to tell the claim "I ran the tests" apart from whether
+  they were actually run.
+- Unverified artifacts, or artifacts tampered with after verification, get
+  deployed as-is.
+- Deployments happen with no rollback path, so there's no way back when
+  something breaks.
 
-이 저장소는 이 문제들을 추상적 권고가 아니라 실행 가능한 스크립트·스키마·
-템플릿·예제로 강제한다.
+This repository doesn't address these as abstract recommendations. It
+enforces them with executable scripts, schemas, templates, and examples.
 
-## 왜 "Airframe"인가
+## Why "Airframe"
 
-이름은 장식이 아니라 실제 구조를 그대로 옮긴 것이다 — 아래 용어들은 전부
-`scripts/`에 실제로 존재하는 도구다.
+The name isn't decoration — it's a direct mapping to the real structure.
+Every term below is a tool that actually exists in `scripts/`.
 
-| 항공 용어 | 이 표준에서 | 실제 도구 |
+| Aviation term | In this standard | Actual tool |
 |---|---|---|
-| Preflight (이륙 전 점검) | 작업 착수 전 위험 경계 확인 | `scripts/preflight.py` |
-| 조종사 서명 / 비행 기록 | AI 시작·종료 서명 | `scripts/sign_ai_session.py` |
-| 블랙박스 (변조 불가 기록) | 해시 체인 ledger | `.ai/ledger.jsonl` |
-| 교대 인수인계 브리핑 | 다음 AI/세션 인계 번들 | `scripts/create_handoff.py` |
-| 화물 매니페스트 | 릴리스 산출물 목록·해시 | `scripts/create_release_manifest.py` |
-| 관제탑 게이트 | 배포 전 검증 통과 여부 | `scripts/verify_release.py` |
-| 비상 절차 | 롤백 지점·데이터/코드 롤백 분리 | `docs/ROLLBACK_STANDARD.md` |
+| Preflight | Risk-boundary check before starting work | `scripts/preflight.py` |
+| Pilot signature / flight log | AI start/end signature | `scripts/sign_ai_session.py` |
+| Black box (tamper-evident record) | Hash-chained ledger | `.ai/ledger.jsonl` |
+| Shift-handoff briefing | Bundle for the next AI/session | `scripts/create_handoff.py` |
+| Cargo manifest | Release artifact list + hashes | `scripts/create_release_manifest.py` |
+| Control-tower gate | Pre-deploy verification pass/fail | `scripts/verify_release.py` |
+| Emergency procedures | Rollback point, code/data rollback separation | `docs/ROLLBACK_STANDARD.md` |
 
-핵심 규율 하나: **체크리스트에 없는 항목은 통과(PASS)가 아니라 미실행
-(NOT_RUN)으로 남는다.** 확인하지 않은 걸 확인했다고 적지 않는다 — 이게
-전체 표준을 관통하는 단 하나의 규칙이다.
+One discipline underlies all of it: **anything not on the checklist stays
+as NOT_RUN, not PASS.** You don't write down that you checked something you
+didn't. That single rule runs through the entire standard.
 
-## 구조와 흐름
+## Structure and flow
 
-### 1. 계층형 Coordinator — 이렇게 짠다
+### 1. Layered Coordinator — this is how you build it
 
-도메인마다 독립된 Coordinator를 두고, 요청은 반드시 이 계층을 통과한다.
-Coordinator는 요청 정규화·순서·캐시·오류 정규화만 담당하고, 실제 파일·DB·
-외부 API 접근은 Adapter/Repository가 전담한다(`docs/ARCHITECTURE_STANDARD.md`).
+Every domain gets its own independent Coordinator, and requests must pass
+through this layer. The Coordinator only handles request normalization,
+ordering, caching, and error normalization — actual file, DB, and external
+API access is owned exclusively by the Adapter/Repository
+(`docs/ARCHITECTURE_STANDARD.md`).
 
 ```mermaid
 flowchart TD
-    UI["UI / API / 외부 요청 / 백그라운드 작업"]
+    UI["UI / API / external requests / background jobs"]
     Entry["Application Entry Layer"]
     AuthC["AuthCoordinator"]
     NewsC["NewsCoordinator"]
@@ -79,186 +95,203 @@ flowchart TD
     AuthA["Adapter / Repository"]
     NewsA["Adapter / Repository"]
     PayA["Adapter / Repository"]
-    Ext[("DB · 파일 · 외부 API · OS")]
+    Ext[("DB · files · external APIs · OS")]
 
     UI --> Entry
     Entry --> AuthC & NewsC & PayC
     AuthC --> AuthS --> AuthA --> Ext
     NewsC --> NewsS --> NewsA --> Ext
     PayC --> PayS --> PayA --> Ext
-    UI -.->|"금지: 직접 호출 -> 상태 중복"| Ext
+    UI -.->|"forbidden: direct call -> duplicated state"| Ext
 
     style UI fill:#eef,stroke:#557
     style Ext fill:#fee,stroke:#a55
 ```
 
-### 2. 이렇게는 안 짠다 — 반대쪽 실패
+### 2. This is how you don't build it — the failure on the other side
 
-구조가 없으면 둘 중 하나로 무너진다: 위 그림의 점선처럼 UI가 DB·외부 API를
-직접 찔러 상태가 중복되거나, 또는 아래처럼 모든 도메인 로직을 하나가
-삼킨 전역 오케스트레이터가 탄생한다. 둘 다 이 표준이 금지하는 것이다.
+Without structure, a project collapses one of two ways: the UI pokes the
+DB/external APIs directly (the dashed line above) and state gets
+duplicated, or every domain's logic gets swallowed by a single global
+orchestrator, shown below. Both are things this standard forbids.
 
 ```mermaid
 flowchart TD
-    UI2["UI / API / 백그라운드 작업"]
-    Glob["GlobalOrchestrator<br/>(인증 + 뉴스 + 결제 + 파일 + 캐시... 전부)"]
-    Ext2[("DB · 파일 · 외부 API")]
+    UI2["UI / API / background jobs"]
+    Glob["GlobalOrchestrator<br/>(auth + news + payments + files + caching... everything)"]
+    Ext2[("DB · files · external APIs")]
     UI2 --> Glob --> Ext2
 
     style Glob fill:#fee,stroke:#a55,stroke-width:2px
 ```
 
-### 3. 서명 → 검증 → 릴리스 흐름 — 이래서 신뢰할 수 있다
+### 3. Sign → verify → release flow — this is why you can trust it
 
-AI 작업 1건이 배포 후보가 되기까지 거치는 실제 관문이다. 각 화살표는
-`scripts/`의 실제 명령과 1:1로 대응한다 (전체 대응표는 위 "왜 Airframe인가").
+This is the actual gate a single piece of AI work has to pass through
+before it becomes a release candidate. Every arrow corresponds 1:1 to a
+real command in `scripts/` (the full mapping is in "Why Airframe" above).
 
 ```mermaid
 flowchart LR
-    A["preflight<br/>위험 경계 확인"] --> B["AI 시작 서명<br/>ledger 기록"]
-    B --> C["작업"]
-    C --> D["시크릿 · 금지 패턴<br/>검사"]
+    A["preflight<br/>risk-boundary check"] --> B["AI start signature<br/>ledger entry"]
+    B --> C["work"]
+    C --> D["secret · forbidden-pattern<br/>scan"]
     D --> E["verify_project<br/>PASS / FAIL / NOT_RUN"]
-    E --> F["AI 종료 서명<br/>해시 체인 연결"]
-    F --> G["체크포인트 · 인계 번들"]
+    E --> F["AI end signature<br/>hash-chain link"]
+    F --> G["checkpoint · handoff bundle"]
     G --> H["release manifest<br/>+ verify_release"]
-    H -->|"artifact·manifest 변조 감지"| I["배포 차단"]
-    H -->|"13종 검사 전부 PASS"| J["배포 후보 확정<br/>(실제 배포는 사람이 실행)"]
+    H -->|"artifact/manifest tampering detected"| I["deploy blocked"]
+    H -->|"all 13 checks PASS"| J["release candidate confirmed<br/>(actual deploy is a human step)"]
 
     style I fill:#fee,stroke:#a55
     style J fill:#efe,stroke:#5a5
 ```
 
-각 단계의 실제 실행 결과(마스킹된 서명 JSON, 변조 후 FAIL 재현 포함)는 아래
-"AI 서명 예시"·"검증 예시"·"릴리스와 롤백" 절에 그대로 있다 — 이 다이어그램은
-설명이고, 그 아래는 증거다.
+The actual output for every stage (masked signature JSON, a reproduced FAIL
+after tampering, etc.) is right there in the "AI signature example",
+"Verification example", and "Release and rollback" sections below — this
+diagram is the explanation, and what follows is the evidence.
 
-## 핵심 원칙
+## Core principles
 
-- 중앙 계층은 통제하되 실제 기능을 독점하지 않는다.
-- 같은 상태와 외부 경계에는 하나의 명확한 소유자를 둔다.
-- 기록되지 않은 작업은 존재하지 않은 것으로 본다.
-- 서명되지 않은 AI 변경은 정식 결과로 승인하지 않는다.
-- AI의 설명보다 Git diff와 실행 결과를 우선한다.
-- 실행하지 않은 검사는 PASS가 아니라 NOT_RUN이다.
-- 검증되지 않은 산출물은 배포하지 않으며, 검증 후 변경된 산출물은 다시 검증한다.
-- 롤백할 수 없는 변경은 라이브에 적용하지 않는다.
-- 시크릿은 코드, 로그, Git, 빌드에 넣지 않는다.
-- 기존 정상 동작을 보존하면서 점진적으로 개선한다 (한 번에 전면 재작성 금지).
+- The central layer governs, but doesn't monopolize the actual work.
+- The same state and every external boundary has exactly one clear owner.
+- Work that wasn't recorded is treated as if it never happened.
+- An unsigned AI change is never accepted as an official result.
+- Git diffs and execution results outrank an AI's own account of what it did.
+- A check that wasn't run is NOT_RUN, not PASS.
+- Unverified artifacts don't get deployed, and an artifact that changed
+  after verification gets re-verified.
+- A change that can't be rolled back doesn't go live.
+- Secrets never go into code, logs, Git, or a build.
+- Existing working behavior is preserved while improving incrementally
+  (no wholesale rewrites).
 
-## 말이 아니라 실행 결과로
+## Results, not claims
 
-이 문서에 적힌 숫자와 명령은 전부 실제로 실행해서 얻은 것이다 — 주장이 아니라
-재현 가능한 결과다.
+Every number and command in this document was obtained by actually running
+it — this isn't an assertion, it's a reproducible result.
 
-- `python -m pytest tests/ -q` → **154개 테스트 통과** (아래 "실제 실행 명령"의
-  모든 도구가 대상, Phase 8 독립 감사의 회귀 테스트 포함).
-- 릴리스 게이트가 실제로 막는다: 검증을 통과한 산출물의 파일 내용을 바꾼 뒤
-  다시 검사하면 `artifact_hashes`가 FAIL로 걸린다 — [아래 "릴리스와 롤백"](#릴리스와-롤백)에
-  실제 재현 결과 그대로 있다.
-- ledger는 append-only 해시 체인이다 — 과거 항목을 고치면 다음 기록 시도가
-  무결성 위반으로 거부된다 ([아래 "AI 서명 예시"](#ai-서명-예시)).
-- 예제 3종(`examples/`)은 전부 실제로 실행 가능하다 — README에 적힌 명령
-  그대로 복사해서 돌리면 된다.
+- `python -m pytest tests/ -q` → **154 tests passing** (covers every tool
+  listed in "Actual commands" below, including the 15 regression tests
+  added by the Phase 8 independent audit).
+- The release gate actually blocks: change the contents of a file after it
+  passed verification, and `artifact_hashes` fails on the next check — the
+  reproduced result is right there under
+  ["Release and rollback"](#release-and-rollback).
+- The ledger is an append-only hash chain: editing a past entry causes the
+  next write attempt to be rejected for integrity violation (see
+  ["AI signature example"](#ai-signature-example)).
+- All 3 examples (`examples/`) are actually runnable — copy the commands
+  from this README and they work.
 
-과장할 필요가 없다. 확인 안 된 건 NOT_RUN이라고 적는 도구가, 스스로에 대해
-확인 안 된 걸 PASS라고 적을 이유가 없다.
+There's no need to exaggerate. A tool that writes NOT_RUN for anything it
+didn't check has no reason to write PASS for something it didn't check
+about itself.
 
-## 설치
+## Installation
 
-이 저장소를 프로젝트에 "적용"하는 방법은 두 가지다.
+There are two ways to "apply" this repository to a project.
 
-**A. 스킬로 참조한다** — 이 저장소 경로를 그대로 두고, 작업 시 `SKILL.md`를
-읽게 한다. 스크립트는 절대/상대 경로로 직접 호출한다.
+**A. Reference it as a skill** — leave this repository where it is, and
+have it read `SKILL.md` during work. Call the scripts by absolute or
+relative path.
 
 ```bash
 python /path/to/ai-project-structure-standard/scripts/preflight.py --workspace .
 ```
 
-**B. 프로젝트에 필요한 부분만 복사한다** — 최소한 다음을 프로젝트 루트에 복사한다.
+**B. Copy only what your project needs** — at minimum, copy the following
+into your project root.
 
 ```bash
-cp -r scripts schemas <대상 프로젝트>/
+cp -r scripts schemas <target-project>/
 cp templates/AI_START_HERE.md templates/ARCHITECTURE.md templates/CURRENT.md \
-   templates/STATUS.md <대상 프로젝트>/
-cp .ai-standard.example.yml <대상 프로젝트>/.ai-standard.yml
+   templates/STATUS.md <target-project>/
+cp .ai-standard.example.yml <target-project>/.ai-standard.yml
 ```
 
-`.ai-standard.yml`(또는 `.json`/`.yaml`)이 없어도 모든 도구는 안전한 기본값으로
-동작한다 — 설정은 선택 사항이다.
+Every tool works with safe defaults even without a `.ai-standard.yml` (or
+`.json`/`.yaml`) — configuration is optional.
 
-## 빠른 시작
+## Quick start
 
 ```bash
-# 1) 위험 경계 확인 (Git 저장소 여부, protected branch, 미커밋 변경 등)
+# 1) Check risk boundaries (is it a Git repo, protected branch, uncommitted changes, etc.)
 python scripts/preflight.py
 
-# 2) 작업 시작 서명
-python scripts/sign_ai_session.py start --task "이번에 할 일 설명" \
-  --allowed-scope "수정할 파일 목록" --forbidden-scope "건드리지 않을 파일"
+# 2) Sign the start of work
+python scripts/sign_ai_session.py start --task "description of this task" \
+  --allowed-scope "files you'll change" --forbidden-scope "files you won't touch"
 
-# 3) ...코드 작업...
+# 3) ...do the work...
 
-# 4) 시크릿·금지 패턴 검사 + 프로젝트 검증
+# 4) Secret / forbidden-pattern scans + project verification
 python scripts/check_secrets.py
 python scripts/check_forbidden_patterns.py
 python scripts/verify_project.py
 
-# 5) 작업 종료 서명과 인계 번들
+# 5) Sign the end of work and generate a handoff bundle
 python scripts/sign_ai_session.py end --status success --tests-run "pytest" \
   --tests-passed "N" --tests-failed "0"
 python scripts/create_handoff.py
 ```
 
-## 신규 프로젝트 적용
+## Applying to a new project
 
-1. `templates/AI_START_HERE.md`, `templates/ARCHITECTURE.md`,
-   `templates/CURRENT.md`, `templates/STATUS.md`를 프로젝트 루트(또는 `docs/`)에
-   복사하고 값을 채운다.
-2. `.ai-standard.example.yml`을 `.ai-standard.yml`로 복사하고 프로젝트 위험
-   등급·protected branch·검증 명령을 채운다.
-3. 도메인이 정해지면 `docs/ARCHITECTURE_STANDARD.md`를 따라 Entry → Domain
-   Coordinator → Service → Adapter 계층으로 시작한다. 처음부터 최상위
-   Application Coordinator를 만들지 않는다(필요 조건은 `SKILL.md` §5·§6).
-4. `examples/python-desktop/` 또는 `examples/web-service/`를 뼈대로 복사해
-   도메인 이름만 바꿔 시작해도 된다 (`docs/EXAMPLES.md` §5).
-5. 작업마다 `SKILL.md` §7~§9의 절차(서명 → 작업 → 검증 → 인계)를 따른다.
+1. Copy `templates/AI_START_HERE.md`, `templates/ARCHITECTURE.md`,
+   `templates/CURRENT.md`, `templates/STATUS.md` into your project root (or
+   `docs/`) and fill in the values.
+2. Copy `.ai-standard.example.yml` to `.ai-standard.yml` and fill in your
+   project's risk level, protected branches, and verification commands.
+3. Once the domains are decided, start with the Entry → Domain
+   Coordinator → Service → Adapter layering from
+   `docs/ARCHITECTURE_STANDARD.md`. Don't create a top-level Application
+   Coordinator from the start (see `SKILL.md` §5-§6 for when one is
+   actually warranted).
+4. Copy `examples/python-desktop/` or `examples/web-service/` as a
+   skeleton and just rename the domain (`docs/EXAMPLES.md` §5).
+5. Follow the procedure in `SKILL.md` §7-§9 (sign → work → verify →
+   handoff) for every unit of work.
 
-## 기존 프로젝트 적용
+## Applying to an existing project
 
-한 번에 전면 재작성하지 않는다. `docs/MIGRATION_GUIDE.md`의 8단계
-(현재 호출 경로 조사 → 상태 소유자 조사 → 직접 호출·우회 경로 목록화 →
-기존 Coordinator/Gateway 재사용 판단 → 위험 경계부터 중앙화 → 기능별 점진
-이전 → 회귀 테스트 → 레거시 경로 제거)를 따른다.
+Don't do a wholesale rewrite. Follow the 8 steps in
+`docs/MIGRATION_GUIDE.md` (survey current call paths → find who owns each
+piece of state → list direct calls and bypass paths → decide whether to
+reuse an existing Coordinator/Gateway → centralize the highest-risk
+boundaries first → migrate feature by feature → regression test → remove
+the legacy path).
 
-실행 가능한 나쁜 예/좋은 예 대조는 `examples/existing-project-migration/`에
-있다.
+A runnable bad-example/good-example comparison lives in
+`examples/existing-project-migration/`.
 
 ```bash
-python examples/existing-project-migration/before/app.py   # 나쁜 예: 직접 호출·상태 중복·오류 삼킴
-python examples/existing-project-migration/after/main.py A100 A101 A999  # 개선 예
+python examples/existing-project-migration/before/app.py   # bad: direct calls, duplicated state, swallowed errors
+python examples/existing-project-migration/after/main.py A100 A101 A999  # improved
 ```
 
-## 실제 실행 명령
+## Actual commands
 
-| 목적 | 명령 |
+| Purpose | Command |
 |---|---|
-| 위험 경계 확인 | `python scripts/preflight.py` |
-| AI 시작 서명 | `python scripts/sign_ai_session.py start --task "..."` |
-| AI 종료 서명 | `python scripts/sign_ai_session.py end --status success` |
-| 체크포인트 | `python scripts/checkpoint.py --name <이름>` |
-| 인계 번들 생성 | `python scripts/create_handoff.py` |
-| 시크릿 검사 | `python scripts/check_secrets.py` |
-| 금지 패턴 검사 | `python scripts/check_forbidden_patterns.py` |
-| 프로젝트 검증 실행 | `python scripts/verify_project.py` |
-| 문서 정합성 검사 | `python scripts/check_document_sync.py` |
-| 릴리스 manifest 생성 | `python scripts/create_release_manifest.py --version <버전> --artifacts <파일...> --rollback-point <지점> --approved-by <이름>` |
-| 릴리스 게이트 검사 | `python scripts/verify_release.py` |
-| 전체 테스트 | `python -m pytest tests/ -q` |
+| Check risk boundaries | `python scripts/preflight.py` |
+| Sign start of AI work | `python scripts/sign_ai_session.py start --task "..."` |
+| Sign end of AI work | `python scripts/sign_ai_session.py end --status success` |
+| Checkpoint | `python scripts/checkpoint.py --name <name>` |
+| Generate handoff bundle | `python scripts/create_handoff.py` |
+| Secret scan | `python scripts/check_secrets.py` |
+| Forbidden-pattern scan | `python scripts/check_forbidden_patterns.py` |
+| Run project verification | `python scripts/verify_project.py` |
+| Document sync check | `python scripts/check_document_sync.py` |
+| Generate release manifest | `python scripts/create_release_manifest.py --version <version> --artifacts <files...> --rollback-point <point> --approved-by <name>` |
+| Release gate check | `python scripts/verify_release.py` |
+| Full test suite | `python -m pytest tests/ -q` |
 
-각 스크립트의 전체 옵션은 `--help`로 확인한다 (예: `python scripts/preflight.py --help`).
+Run any script with `--help` to see its full options (e.g.
+`python scripts/preflight.py --help`).
 
-## 저장소 구조
+## Repository structure
 
 ```text
 ai-project-structure-standard/
@@ -271,29 +304,36 @@ ai-project-structure-standard/
 │   └── DECISIONS/ADR-0001-layered-coordinator.md
 ├── templates/   (AI_START_HERE, ARCHITECTURE, CURRENT, STATUS, WORK_LOG,
 │                 SESSION_HANDOFF, ERROR_CATALOG, RUNBOOK, DEPLOY_LOG,
-│                 SECURITY, ADR_TEMPLATE 등 — 프로젝트에 복사해 쓰는 양식)
+│                 SECURITY, ADR_TEMPLATE, etc. — forms you copy into your project)
 ├── schemas/     (request/result/error/ai_signature/project_config/
 │                 verification/release_manifest .schema.json)
 ├── scripts/     (common, preflight, sign_ai_session, checkpoint, create_handoff,
 │                 check_secrets, check_forbidden_patterns, verify_project,
 │                 check_document_sync, create_release_manifest, verify_release)
 ├── examples/
-│   ├── python-desktop/               노트 CLI 앱 (Entry→Coordinator→Service→Repository)
-│   ├── web-service/                  상태 서비스 (Route→Coordinator→Service→Adapter)
-│   └── existing-project-migration/   before(나쁜 예) / after(개선 예)
-└── tests/       (13개 파일, `python -m pytest tests/ -q`)
+│   ├── python-desktop/               a notes CLI app (Entry→Coordinator→Service→Repository)
+│   ├── web-service/                  a status service (Route→Coordinator→Service→Adapter)
+│   └── existing-project-migration/   before (bad) / after (improved)
+└── tests/       (13 files, `python -m pytest tests/ -q`)
 ```
 
-## AI 서명 예시
+## AI signature example
 
-아래는 임시 데모 저장소에서 실제로 실행해 얻은 출력이다(경로·시각은 실행
-환경마다 다르다). 값은 `scripts/common.mask_sensitive`로 마스킹된 것을 그대로
-옮겼다 — 시크릿 원문은 여기에도 저장소 어디에도 남지 않는다.
+The output below was obtained by actually running these commands against a
+temporary demo repository (paths and timestamps will differ in your
+environment). Values are shown exactly as masked by
+`scripts/common.mask_sensitive` — the raw secret never appears here or
+anywhere else in this repository.
+
+> **Note:** the tools' own console output is in Korean (that's the
+> language the scripts print in) — only the surrounding prose in this
+> README is translated. CLI flags, file paths, and JSON field names are
+> unaffected.
 
 ```bash
-python scripts/sign_ai_session.py start --task "데모: README 예시 수정" \
+python scripts/sign_ai_session.py start --task "demo: edit the README example" \
   --provider anthropic --claimed-model claude-sonnet-5 --role implementer \
-  --effort medium --allowed-scope "README.md" --forbidden-scope "없음"
+  --effort medium --allowed-scope "README.md" --forbidden-scope "none"
 ```
 
 ```json
@@ -306,7 +346,7 @@ python scripts/sign_ai_session.py start --task "데모: README 예시 수정" \
   "role": "implementer",
   "branch": "feature/demo",
   "base_commit": "a4a5b084a79c3790331884e947cdc6ea0aefb045",
-  "task": "데모: README 예시 수정",
+  "task": "demo: edit the README example",
   "allowed_scope": "README.md",
   "previous_entry_hash": "",
   "entry_hash": "9f09d788c1b38f97c2a63888636a66f9ee1535aa9261c8793450ceb6ec2f23fc"
@@ -314,9 +354,9 @@ python scripts/sign_ai_session.py start --task "데모: README 예시 수정" \
 ledger: <workspace>/.ai/ledger.jsonl
 ```
 
-`actual_model_id`는 환경변수(`AI_ACTUAL_MODEL_ID` 등)로 확인할 수 없으면
-언제나 `UNKNOWN`으로 기록된다 — AI의 자기 신고(`claimed_model`)를 검증된 값으로
-단정하지 않는다.
+`actual_model_id` is always recorded as `UNKNOWN` unless it can be
+confirmed via an environment variable (e.g. `AI_ACTUAL_MODEL_ID`) — an AI's
+own self-report (`claimed_model`) is never treated as a verified value.
 
 ```bash
 python scripts/sign_ai_session.py end --status success \
@@ -336,11 +376,12 @@ python scripts/sign_ai_session.py end --status success \
 }
 ```
 
-`entry_hash`가 이전 항목의 `previous_entry_hash`로 이어져 해시 체인을 이룬다.
-`.ai/ledger.jsonl`의 기존 항목을 고치면 이 연결이 끊어지고, 다음 `append_ledger`
-호출이 무결성 위반으로 거부한다.
+`entry_hash` links to the previous entry's `entry_hash` via
+`previous_entry_hash`, forming a hash chain. Editing an existing entry in
+`.ai/ledger.jsonl` breaks that link, and the next call to `append_ledger`
+is rejected for integrity violation.
 
-## 검증 예시
+## Verification example
 
 ```bash
 python scripts/verify_project.py
@@ -356,9 +397,9 @@ verification: PASS  (commit: 8ee015c83c22, pass 5 / fail 0 / not_run 0)
 result: <workspace>/.ai/verification.json
 ```
 
-결과는 `schemas/verification.schema.json`을 따르는 `.ai/verification.json`으로
-저장된다. 어떤 검사도 실행하지 않았다면 그 검사는 `NOT_RUN`으로 남고 `PASS`로
-집계되지 않는다.
+The result is saved to `.ai/verification.json`, following
+`schemas/verification.schema.json`. Any check that wasn't run stays
+`NOT_RUN` and is never counted as `PASS`.
 
 ```bash
 python scripts/check_document_sync.py
@@ -374,12 +415,12 @@ document sync: PASS  (pass 4 / fail 0 / not_run 2)
   [NOT_RUN] error_codes: 프로젝트 ERROR_CATALOG.md 없음 (templates/ 는 양식이므로 제외)
 ```
 
-## 릴리스와 롤백
+## Release and rollback
 
 ```bash
 python scripts/create_release_manifest.py --version 0.1.0 --artifacts dist/app.txt \
-  --verification .ai/verification.json --rollback-point <직전 정상 커밋> \
-  --approved-by "승인자"
+  --verification .ai/verification.json --rollback-point <last known-good commit> \
+  --approved-by "approver"
 python scripts/verify_release.py
 ```
 
@@ -392,37 +433,45 @@ verify_release: PASS  (release_id: rel_20260804T2337000000_1b44ae, version: 0.1.
   [PASS   ] release_enabled
 ```
 
-검증 이후 artifact 파일 내용을 바꾸고 다시 실행하면(실제로 재현한 결과):
+Change the artifact's contents after verification and run it again (an
+actually reproduced result):
 
 ```text
 verify_release: FAIL  (pass 12 / fail 1 / not_run 0)
   [FAIL   ] artifact_hashes: 1개 artifact 문제: dist/app.txt: 해시 불일치 (변조 의심)
 ```
 
-manifest 파일 자체를 지워도 통과되지 않는다 — `manifest_exists` 가 FAIL 로
-차단한다 (릴리스 후보의 증적이 없으면 게이트를 지날 수 없다).
+Deleting the manifest file itself doesn't get you through either —
+`manifest_exists` fails and blocks it (no evidence of a release candidate,
+no way through the gate).
 
-검증 후 산출물이 바뀌면 기존 승인은 자동으로 무효가 된다 — 이 게이트를 우회할
-방법은 이 표준의 도구 안에 없다. 롤백 원칙(코드/데이터 롤백 분리, 직전 정상본
-보존, 무한 재시도 금지)은 `docs/ROLLBACK_STANDARD.md`. `verify_release.py`도
-`create_release_manifest.py`도 실제 배포·Git push·GitHub Release를 수행하지
-않는다 — 통과 후 배포는 사람 또는 별도 절차가 수행한다.
+Once an artifact changes after verification, the prior approval is
+automatically invalidated — there is no way to bypass this gate within
+this standard's tooling. Rollback principles (separating code and data
+rollback, keeping the last known-good version, no infinite retries on a
+failed version) are in `docs/ROLLBACK_STANDARD.md`. Neither
+`verify_release.py` nor `create_release_manifest.py` performs an actual
+deployment, Git push, or GitHub Release — deploying after the gate passes
+is a human step or a separate process.
 
-## 비목표
+## Non-goals
 
-- 유료 코드 서명 인증서, HSM, TPM 필수, 강한 DRM
-- 안티디버깅, 패커, 과도한 난독화
-- 백신 기능, 프로세스 감시, 하드웨어 지문 수집, 상용 보안 솔루션
-- 특정 언어·프레임워크·클라우드 벤더 종속
-- 실제 배포 실행, Git push, GitHub Release 생성, 운영 데이터 수정 (이 표준의
-  어떤 스크립트도 수행하지 않는다)
-- 자연어 문서 내용의 완전 자동 판정 (기계적으로 검증 가능한 핵심 불일치만 검사)
+- Paid code-signing certificates, HSM, mandatory TPM, strong DRM
+- Anti-debugging, packers, heavy obfuscation
+- Antivirus features, process monitoring, hardware fingerprinting,
+  commercial security products
+- Lock-in to a specific language, framework, or cloud vendor
+- Actually performing a deployment, Git push, or GitHub Release creation,
+  or touching production data (none of this standard's scripts do any of
+  this)
+- Fully automated judgment of natural-language document content (only
+  mechanically verifiable core inconsistencies are checked)
 
-## 기여
+## Contributing
 
-`CONTRIBUTING.md` 참고. 요약: 이슈/제안 → 브랜치 → 변경 → 테스트/시크릿/금지
-패턴/검증 실행 → PR.
+See `CONTRIBUTING.md`. Short version: issue/proposal → branch → change →
+run tests/secrets/forbidden-patterns/verification → PR.
 
-## 라이선스
+## License
 
-MIT License — `LICENSE` 참고.
+MIT License — see `LICENSE`.
